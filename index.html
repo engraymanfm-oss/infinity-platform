@@ -2391,6 +2391,10 @@ function sum3(n){
   txt.split(/(?<=[.!؟?…])\s+/).map(x => x.trim()).filter(x => x.length > 24).forEach(add);
   if(out.length < 3) txt.split(/[،؛]\s+/).map(x => x.trim()).filter(x => x.length > 40).forEach(add);
   if(!out.length && n && n.t) add(plainText(n.t));
+  if(out.length < 3 && txt){
+    const nums = (txt.match(/(?:\d[\d,.]*\s?(?:%|مليار|مليون|ألف|دولار|ريال|يورو|جنيه)?)|(?:\d{4})/g) || []).filter(x => x.replace(/\D/g,'').length >= 2).slice(0, 4);
+    if(nums.length >= 2) out.push('أرقام في الخبر: ' + nums.join(' · '));
+  }
   while(out.length < 3){
     if(out.length === 1) out.push(((n && n.sec) ? 'القسم: ' + ((typeof NSECTIONS !== 'undefined' && NSECTIONS.find(x => x.id === n.sec) || {}).label || n.sec) + ' · ' : '') + 'المصدر: ' + ((n && n.s) || 'مصادر المنصة') + ' · نُشر ' + timeAgo((n && n.p) || Date.now()));
     else out.push('التقييم التحريري للأهمية ' + impOf(n) + '% — التفاصيل الكاملة عند المصدر.');
