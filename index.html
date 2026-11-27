@@ -943,9 +943,10 @@ body{overflow-x:hidden}
 .navVeil{display:none}
 @media (max-width:1080px){
   .v9shell{grid-template-columns:1fr}
-  .side{position:fixed;inset-block:0;inset-inline-end:0;width:272px;max-width:86vw;transform:translateX(105%);transition:transform .26s ease;
+  .side{display:none;position:fixed;inset-block:0;inset-inline-end:0;width:272px;max-width:86vw;
     background:linear-gradient(180deg,#00224B,#050506 65%);border-inline-end:0;border-inline-start:1px solid rgba(56,117,176,.4);z-index:130;overflow-y:auto}
-  body.navOpen .side{transform:none}
+  body.navOpen .side{display:flex}
+  body.navOpen{overflow:hidden}
   .navVeil{display:block;position:fixed;inset:0;background:rgba(5,5,6,.7);backdrop-filter:blur(3px);z-index:125;opacity:0;pointer-events:none;transition:.2s}
   body.navOpen .navVeil{opacity:1;pointer-events:auto}
   .tbMenu{display:grid}
