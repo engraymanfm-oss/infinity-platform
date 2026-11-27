@@ -2228,7 +2228,7 @@ function v9Home(){
     smart.innerHTML = `<div class="bkHead"><h2>${IC.spark}المختار الذكي</h2><span class="more" style="color:var(--dim)">3 خطوات وخذ الأفضل</span></div>
       <div class="smart3">
         <a class="smartStep" href="#/news/movies"><span class="sic">${IC.film}</span><span><b>اختر ما يعجبك</b><small>الأفلام، الأنمي، التطبيقات، والرياضة</small></span><span class="sn">1</span></a>
-        <a class="smartStep" href="#/ai"><span class="sic">${IC.brain}</span><span><b>دع الذكاء يعمل</b><small>أفضل الأدوات ومقارنة المحاور</small></span><span class="sn">2</span></a>
+        <a class="smartStep" href="#/ai"><span class="sic">${IC.brain}</span><span><b>دع الذكاء يعمل</b><small>${SHOWDOWN.reduce((s,t)=>s+t.items.length,0)} مواجهة بين ${Object.keys(AI_COMPANIES).length} شركة على ${SHOWDOWN.length} محورًا</small></span><span class="sn">2</span></a>
         <a class="smartStep" href="#/devices"><span class="sic">${IC.phone}</span><span><b>احصل على الأفضل</b><small>توصية نهائية حسب احتياجك</small></span><span class="sn">3</span></a>
       </div>`;
   }

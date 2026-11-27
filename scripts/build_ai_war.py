@@ -429,6 +429,11 @@ old = "b.textContent='v9 · 27 نوفمبر';"
 assert old in s, 'version badge'
 s = s.replace(old, "b.textContent='v11 · 27 نوفمبر';", 1)
 
+old = """<a class="smartStep" href="#/ai"><span class="sic">${IC.brain}</span><span><b>دع الذكاء يعمل</b><small>أفضل الأدوات ومقارنة المحاور</small></span><span class="sn">2</span></a>"""
+new = """<a class="smartStep" href="#/ai"><span class="sic">${IC.brain}</span><span><b>دع الذكاء يعمل</b><small>${SHOWDOWN.reduce((s,t)=>s+t.items.length,0)} مواجهة بين ${Object.keys(AI_COMPANIES).length} شركة على ${SHOWDOWN.length} محورًا</small></span><span class="sn">2</span></a>"""
+assert old in s
+s = s.replace(old, new, 1)
+
 # 15) بحث لوحة الأوامر
 old = """    const ids=['code','prog','agent','automation','performance'];"""
 assert old in s
