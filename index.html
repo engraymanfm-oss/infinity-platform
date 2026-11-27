@@ -3168,7 +3168,17 @@ function chatWelcome(){
   chatRender();
   const chips=document.getElementById('chatChips');
   if(chips){
-    const list=(typeof ctxHTML==='function') ? ['لخص لي أهم أخبار اليوم','أفضل أداة للبرمجة','قارن جينسبارك وكلود','مباراة برشلونة الجاية'] : [];
+    const p=(location.hash||'').replace('#/','').split('/').filter(Boolean);
+    let list;
+    if(!p.length) list=['لخص لي أهم أخبار اليوم','أفضل هاتف بكاميرا','أفضل أداة للبرمجة'];
+    else if(p[0]==='ai') list=['قارن جينسبارك وكلود','أفضل أداة للفيديو','من الأفضل للبرمجة؟'];
+    else if(p[0]==='devices') list=['أفضل بطارية','أقوى كاميرا','أرخص فلاجشيب'];
+    else if(p[0]==='news' && p[1]==='movies') list=['شباك التذاكر','أفلام قريبًا','أفضل أفلام دراما'];
+    else if(p[0]==='news' && p[1]==='anime') list=['أفضل أنمي خيال علمي','أنمي أكشن','أنمي رومانسي'];
+    else if(p[0]==='news' && p[1]==='barca') list=['ترتيب برشلونة','هدافو برشلونة','مباراة برشلونة الجاية'];
+    else if(p[0]==='news') list=['أهم أخبار اليوم','أخبار السعودية','أخبار التقنية'];
+    else if(p[0]==='apps') list=['برامج مفتوحة المصدر','تطبيقات أندرويد نادرة','برامج ويندوز'];
+    else list=['أهم أخبار اليوم','برامج مفتوحة المصدر','أفضل هاتف'];
     chips.innerHTML=list.map(q=>`<button data-chatq="${escHtml(q)}">${escHtml(q)}</button>`).join('');
     chips.onclick=e=>{ const b=e.target.closest('[data-chatq]'); if(b) chatSend(b.dataset.chatq); };
   }
