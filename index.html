@@ -2019,7 +2019,7 @@ function favPaint(){
 }
 function favSweep(){
   document.querySelectorAll('.n-item, .card').forEach(el=>{
-    const titleEl=el.querySelector('h3, .t'); if(!titleEl) return;
+    const titleEl=el.querySelector('h3, .t'); if(!titleEl) return; if(el.classList.contains('v8saved')) return;
     const t=titleEl.textContent.trim().slice(0,90); if(!t) return;
     if(el.querySelector('[data-fav],[data-save]')) { return; }
     const a=el.querySelector('a[href]');
