@@ -516,7 +516,9 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
   background-size:26px 26px;mask-image:radial-gradient(circle at 50% 30%,#050506 0%,rgba(5,5,6,.55) 45%,transparent 85%);
   opacity:.55}
 #bp{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.85}
-header,nav,main,footer{position:relative;z-index:2}
+main,footer{position:relative;z-index:2}
+header{position:sticky;z-index:60}
+nav{position:sticky;z-index:55}
 ::selection{background:rgba(127,178,229,.28);color:var(--white)}
 a{color:var(--gold)}
 a:hover{color:var(--white)}
@@ -543,7 +545,7 @@ nav{background:rgba(5,5,6,.82);border-bottom:1px solid var(--line)}
 .kpiBox::after{content:'';position:absolute;inset:auto -30% -60% -30%;height:120px;background:radial-gradient(closest-side,rgba(127,178,229,.32),transparent);z-index:-1}
 .kpiBox .kic{width:30px;height:30px;color:var(--sky);margin-bottom:6px}
 .kpiBox .kic svg{width:100%;height:100%}
-.kpiBox .knum{font-family:'Amiri',serif;font-size:1.7rem;font-weight:700;color:var(--white);line-height:1.1;direction:ltr;text-align:start;font-variant-numeric:tabular-nums}
+.kpiBox .knum{direction:rtl;text-align:start;font-family:'Amiri',serif;font-size:1.7rem;font-weight:700;color:var(--white);line-height:1.1;direction:ltr;text-align:start;font-variant-numeric:tabular-nums}
 .kpiBox .klbl{color:var(--mut);font-size:.72rem;line-height:1.5;margin-top:2px}
 .kpiBox .kmini{color:var(--gold);font-size:.68rem}
 .kpiBox:hover{border-color:var(--line2)}
@@ -740,6 +742,10 @@ footer{color:var(--dim)}
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.001s!important;transition-duration:.001s!important}
 }
+
+/* ===== المدار: التوقيع أسفل الحلقة، والشعار في مركزها ===== */
+.hero .heroTag{position:absolute;inset-inline:0;bottom:0;margin:0;padding:0 12px}
+@media (max-width:820px){ .hero .heroTag{position:static} }
 
 </style>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js" onerror="window.__echartsFail=1"></script>
@@ -2249,7 +2255,7 @@ function orbitBoot(){
   let raf=null, tx=0, ty=0;
   const apply=()=>{ raf=null;
     nodes.forEach((n,i)=>{ const k=(i%2?1:-1); n.style.transform=`translate3d(${tx*k*(6+i*2)}px,${ty*(5+i)}px,0)`; });
-    if(logo) logo.style.transform=`translate3d(${-tx*7}px,${-ty*6}px,0)`;
+    if(logo) ((logo&&logo.querySelector('img'))||logo).style.transform=`translate3d(${-tx*7}px,${-ty*6}px,0)`;
   };
   hero.addEventListener('mousemove',e=>{ const r=hero.getBoundingClientRect();
     tx=((e.clientX-r.left)/r.width-.5)*2; ty=((e.clientY-r.top)/r.height-.5)*2; if(!raf) raf=requestAnimationFrame(apply); });
