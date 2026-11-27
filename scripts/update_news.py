@@ -33,6 +33,9 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 INDEX = ROOT / "index.html"
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import translate_ar  # noqa: E402  — ترجمة العناوين والملخصات غير العربية إلى العربية
 RIYADH = timezone(timedelta(hours=3))
 
 MAX_CUR = 14       # items kept per key in CURATED (page shows 4-6 + ticker)
@@ -605,6 +608,14 @@ def main() -> int:
             snapshot[key] = shape(merge(snapshot.get(key, []), items,
                                         CUM_MAX_SNAP if cum else MAX_SNAP,
                                         CUM_KEEP_DAYS if cum else KEEP_DAYS), True)
+
+    # كل عنوان أو ملخص غير عربي (The Verge · IGN · Variety · ANN · MALN · 9to5Mac …)
+    # يُترجم إلى العربية قبل الكتابة، بكاش محلي يمنع تكرار الترجمة.
+    try:
+        translated = translate_ar.arabize_blocks(curated, snapshot)
+        print(f"   · ترجمة عربية {translated} نصًا")
+    except Exception as exc:  # noqa: BLE001 - فشل الترجمة لا يمنع تحديث الأخبار
+        print(f"   !! الترجمة تعذّرت: {type(exc).__name__}: {exc}", file=sys.stderr)
 
     with_img = fill_og(curated, snapshot)
     print(f"   · صور og:image مكملة {with_img}")
