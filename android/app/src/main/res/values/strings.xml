@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Infinity</string>
+    <string name="offline_title">تعذر الاتصال</string>
+    <string name="offline_body">تحقق من اتصال الإنترنت ثم أعد المحاولة. التطبيق يعرض منصة Infinity الحية.</string>
+    <string name="retry">إعادة المحاولة</string>
+</resources>
