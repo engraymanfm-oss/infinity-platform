@@ -33,10 +33,21 @@ ROOT = Path(__file__).resolve().parents[1]
 INDEX = ROOT / "index.html"
 RIYADH = timezone(timedelta(hours=3))
 
-MAX_CUR = 8        # items kept per key in CURATED (page shows 4-6 + ticker)
-MAX_SNAP = 20      # items kept per key in SNAPSHOT (offline depth)
-KEEP_DAYS = 4      # older items are dropped from the refreshed data
+MAX_CUR = 14       # items kept per key in CURATED (page shows 4-6 + ticker)
+MAX_SNAP = 30      # items kept per key in SNAPSHOT (offline depth)
+KEEP_DAYS = 14     # older general-news items are dropped from the refreshed data
 DESC_MAX = 220     # characters of plain description kept per item
+
+# التحديث التراكمي: هذه المصادر تغذّي الأنمي والأفلام (وشباك التذاكر)، فلا يُحذف
+# منها قديم أبدًا — تُضاف الجديدة أولًا وتُكرَّر بحسب الرابط/العنوان فقط.
+CUMULATIVE_KEYS = {"ANN", "MALN", "VERGE", "VARIETY", "IGN", "SKY", "CNN"}
+CUM_KEEP_DAYS = 3650      # عمليًا: بلا حد زمني
+CUM_MAX_SNAP = 70         # ذاكرة أعمق للأرشيف التراكمي
+MAX_OG = 28               # أقصى عدد صفحات تُفتح لاستخراج og:image في التشغيل الواحد
+OG_LIMIT = 3              # صفحات لكل مصدر
+
+# علامات v8: إن غابت لا نكتب على index.html حتى لا نكسر الواجهة
+V8_MARKERS = ("function v8Home", "function openSheet", "class=\"v8acts\"")
 UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
       "Chrome/124.0 Safari/537.36 InfinityBot/1.0 (+https://github.com/engraymanfm-oss/infinity-platform)")
 
@@ -160,8 +171,9 @@ def parse_feed(raw: bytes, source_name: str) -> list[dict]:
     return out
 
 
-def merge(old: list[dict], new: list[dict], limit: int) -> list[dict]:
-    cutoff = int((datetime.now(timezone.utc) - timedelta(days=KEEP_DAYS)).timestamp() * 1000)
+def merge(old: list[dict], new: list[dict], limit: int, keep_days: int = KEEP_DAYS) -> list[dict]:
+    """دمج تراكمي: الجديد أولًا، ثم القديم بلا تكرار (بالرابط)، ولا حذف داخل المدة."""
+    cutoff = int((datetime.now(timezone.utc) - timedelta(days=keep_days)).timestamp() * 1000)
     seen: set[str] = set()
     merged: list[dict] = []
     for it in new:
@@ -198,11 +210,69 @@ def shape(items: list[dict], with_img: bool) -> list[dict]:
     return out
 
 
+def og_image(url: str) -> str:
+    """صورة المشاركة من صفحة الخبر نفسها (og:image) — بديل نظيف حين لا تضع الخلاصة صورة."""
+    raw = fetch(url)
+    txt = raw.decode("utf-8", "replace")[:400000]
+    for pat in (r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)',
+                r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image'):
+        m = re.search(pat, txt, re.I)
+        if m and m.group(1).startswith("http"):
+            return unescape(m.group(1))
+    return ""
+
+
+def fill_og(curated: dict, snapshot: dict) -> int:
+    """يكمل الصور الناقصة في CURATED/SNAPSHOT من og:image — بعدد محدود لكل تشغيل."""
+    cands = []
+    for k, items in curated.items():
+        for it in items:
+            if not it.get("img") and it.get("l"):
+                cands.append(((it.get("p") or 0), k, it))
+    cands.sort(key=lambda r: r[0], reverse=True)
+    picked, per, budget = [], {}, MAX_OG
+    for row in cands:
+        if budget <= 0:
+            break
+        if per.get(row[1], 0) >= OG_LIMIT:
+            continue
+        per[row[1]] = per.get(row[1], 0) + 1
+        budget -= 1
+        picked.append(row)
+    if not picked:
+        return 0
+
+    def work(row):
+        _, k, it = row
+        try:
+            return k, it.get("l"), og_image(it.get("l", ""))
+        except Exception:  # noqa: BLE001 - صورة واحدة لا توقف التشغيل
+            return k, it.get("l"), ""
+
+    found = 0
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        for k, link, img in pool.map(work, picked):
+            if not img:
+                continue
+            for it in curated.get(k, []):
+                if it.get("l") == link:
+                    it["img"] = img
+            for it in snapshot.get(k, []):
+                if it.get("l") == link and not it.get("img"):
+                    it["img"] = img
+            found += 1
+    return found
+
+
 def main() -> int:
     if not INDEX.exists():
         print(f"!! {INDEX} not found", file=sys.stderr)
         return 1
     html = INDEX.read_text(encoding="utf-8")
+    missing = [m for m in V8_MARKERS if m not in html]
+    if missing:
+        print("!! index.html is not the v8 page (missing markers: " + ", ".join(missing) + ")", file=sys.stderr)
+        return 1
 
     feeds = {m.group(1): (m.group(2), m.group(4)) for m in FEED_LINE.finditer(html)}
     if not feeds:
@@ -249,10 +319,17 @@ def main() -> int:
 
     for key, items in results.items():
         # never invent a section: refresh keys that already exist in the page data
+        cum = key in CUMULATIVE_KEYS
         if key in curated:
-            curated[key] = shape(merge(curated.get(key, []), items, MAX_CUR), False)
+            curated[key] = shape(merge(curated.get(key, []), items, MAX_CUR,
+                                       CUM_KEEP_DAYS if cum else KEEP_DAYS), True)
         if key in snapshot:
-            snapshot[key] = shape(merge(snapshot.get(key, []), items, MAX_SNAP), True)
+            snapshot[key] = shape(merge(snapshot.get(key, []), items,
+                                        CUM_MAX_SNAP if cum else MAX_SNAP,
+                                        CUM_KEEP_DAYS if cum else KEEP_DAYS), True)
+
+    with_img = fill_og(curated, snapshot)
+    print(f"   · صور og:image مكملة {with_img}")
 
     after = (json.dumps(curated, ensure_ascii=False, sort_keys=True),
              json.dumps(snapshot, ensure_ascii=False, sort_keys=True))
