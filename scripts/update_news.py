@@ -278,6 +278,23 @@ def wiki_thumb(title: str, size: int = 500) -> str:
     return ''
 
 
+def wiki_search_image(title: str) -> str:
+    """بحث في ويكيبيديا حين لا تحمل الصفحة المطابقة صورة مباشرة."""
+    q = urllib.parse.urlencode({
+        'action': 'query', 'list': 'search', 'srsearch': title + ' film', 'srlimit': '3',
+        'format': 'json',
+    })
+    req = urllib.request.Request('https://en.wikipedia.org/w/api.php?' + q,
+                                 headers={'User-Agent': WIKI_UA, 'Accept': 'application/json'})
+    with urllib.request.urlopen(req, timeout=25) as resp:
+        data = json.loads(resp.read())
+    for hit in data.get('query', {}).get('search', [])[:2]:
+        img = wiki_thumb(hit.get('title', ''))
+        if img:
+            return img
+    return ''
+
+
 def load_cache() -> dict:
     try:
         return json.loads(WIKI_CACHE.read_text(encoding='utf-8'))
@@ -380,12 +397,15 @@ def refresh_wiki_map(html: str, kind: str, titles: list[str], budget: int = 70) 
         if not img:
             try:
                 img = wiki_thumb(title)
+                if not img and kind == 'POSTERS':
+                    time.sleep(0.4)
+                    img = wiki_search_image(title)
             except Exception as exc:  # noqa: BLE001 - عنوان واحد لا يوقف التشغيل
                 print(f"   · {kind} {title!r} skipped — {type(exc).__name__}")
                 img = ''
             cache[key] = img
             budget -= 1
-            time.sleep(0.6 if img else 0.2)
+            time.sleep(0.5 if img else 0.2)
         if img:
             existing[title] = img
             added += 1
