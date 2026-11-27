@@ -42,7 +42,7 @@ DESC_MAX = 220     # characters of plain description kept per item
 
 # التحديث التراكمي: هذه المصادر تغذّي الأنمي والأفلام (وشباك التذاكر)، فلا يُحذف
 # منها قديم أبدًا — تُضاف الجديدة أولًا وتُكرَّر بحسب الرابط/العنوان فقط.
-CUMULATIVE_KEYS = {"ANN", "MALN", "VERGE", "VARIETY", "IGN", "SKY", "CNN"}
+CUMULATIVE_KEYS = {"ANN", "MALN", "VARIETY"}
 CUM_KEEP_DAYS = 3650      # عمليًا: بلا حد زمني
 CUM_MAX_SNAP = 70         # ذاكرة أعمق للأرشيف التراكمي
 MAX_OG = 60               # أقصى عدد صفحات تُفتح لاستخراج og:image في التشغيل الواحد
