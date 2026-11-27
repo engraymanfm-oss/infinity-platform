@@ -21,6 +21,8 @@ import gzip
 import json
 import re
 import sys
+import time
+import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
@@ -43,8 +45,8 @@ DESC_MAX = 220     # characters of plain description kept per item
 CUMULATIVE_KEYS = {"ANN", "MALN", "VERGE", "VARIETY", "IGN", "SKY", "CNN"}
 CUM_KEEP_DAYS = 3650      # عمليًا: بلا حد زمني
 CUM_MAX_SNAP = 70         # ذاكرة أعمق للأرشيف التراكمي
-MAX_OG = 28               # أقصى عدد صفحات تُفتح لاستخراج og:image في التشغيل الواحد
-OG_LIMIT = 3              # صفحات لكل مصدر
+MAX_OG = 60               # أقصى عدد صفحات تُفتح لاستخراج og:image في التشغيل الواحد
+OG_LIMIT = 6              # صفحات لكل مصدر
 
 # علامات v8: إن غابت لا نكتب على index.html حتى لا نكسر الواجهة
 V8_MARKERS = ("function v8Home", "function openSheet", "class=\"v8acts\"")
@@ -222,6 +224,180 @@ def og_image(url: str) -> str:
     return ""
 
 
+WIKI_UA = ("InfinityPlatformBot/1.0 (https://github.com/engraymanfm-oss/infinity-platform; "
+           "contact: engraymanfm@gmail.com) python-urllib/3.12")
+WIKI_CACHE = ROOT / 'scripts' / 'image-cache.json'
+POSTERS_RE = re.compile(r"^const POSTERS=\{.*\};[ \t]*$", re.M)
+CLUBS_RE = re.compile(r"^const CLUBS=\{.*\};[ \t]*$", re.M)
+
+# خريطة الأندية: الاسم العربي كما في بيانات برشلونة → عنوان الصفحة في ويكيبيديا
+CLUB_PAGES = {
+    'برشلونة': 'FC Barcelona',
+    'ريال مدريد': 'Real Madrid CF',
+    'أتلتيكو مدريد': 'Atlético Madrid',
+    'ديبورتيفو لاكورونيا': 'Deportivo de La Coruña',
+    'إشبيلية': 'Sevilla FC',
+    'فالنسيا': 'Valencia CF',
+    'فياريال': 'Villarreal CF',
+    'ريال سوسيداد': 'Real Sociedad',
+    'أتلتيك بلباو': 'Athletic Bilbao',
+    'ريال بيتيس': 'Real Betis',
+    'خيتافي': 'Getafe CF',
+    'سيلتا فيغو': 'RC Celta de Vigo',
+    'أوساسونا': 'CA Osasuna',
+    'مايوركا': 'RCD Mallorca',
+    'جيرونا': 'Girona FC',
+    'إسبانيول': 'RCD Espanyol',
+    'لاس بالماس': 'UD Las Palmas',
+    'رايو فاييكانو': 'Rayo Vallecano',
+    'ألافيس': 'Deportivo Alavés',
+    'إلتشي': 'Elche CF',
+    'ليفانتي': 'Levante UD',
+    'ألميريا': 'UD Almería',
+    'إيبار': 'SD Eibar',
+    'غرناطة': 'Granada CF',
+    'قادش': 'Cádiz CF',
+    'بلد الوليد': 'Real Valladolid',
+}
+
+
+def wiki_thumb(title: str, size: int = 500) -> str:
+    """صورة الصفحة (بوستر فيلم أو شعار نادٍ) من ويكيبيديا الإنجليزية."""
+    q = urllib.parse.urlencode({
+        'action': 'query', 'titles': title, 'prop': 'pageimages',
+        'pithumbsize': size, 'format': 'json', 'redirects': '1', 'pilicense': 'any',
+    })
+    url = 'https://en.wikipedia.org/w/api.php?' + q
+    req = urllib.request.Request(url, headers={'User-Agent': WIKI_UA, 'Accept': 'application/json'})
+    with urllib.request.urlopen(req, timeout=25) as resp:
+        data = json.loads(resp.read())
+    for page in (data.get('query', {}).get('pages', {}) or {}).values():
+        thumb = page.get('thumbnail', {}).get('source', '')
+        if thumb:
+            return thumb.split('?utm_')[0]
+    return ''
+
+
+def load_cache() -> dict:
+    try:
+        return json.loads(WIKI_CACHE.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return {}
+
+
+def save_cache(cache: dict) -> None:
+    try:
+        WIKI_CACHE.write_text(json.dumps(cache, ensure_ascii=False, indent=1), encoding='utf-8')
+    except OSError:
+        pass
+
+
+def movie_titles(html: str) -> list[str]:
+    out: list[str] = []
+    bo = re.search(r"^const BOX_OFFICE=(\{.*?\n\});", html, re.M | re.S)
+    if bo:
+        out += re.findall(r"t:'([^']+)'", bo.group(1))
+    genres = re.search(r"^const MOVIE_GENRES = \[.*?^\];", html, re.M | re.S)
+    if genres:
+        out += re.findall(r"\['[^']*',\s*'([^']+)',\s*\d{4}", genres.group(0))
+    seen, uniq = set(), []
+    for t in out:
+        t = t.strip()
+        if t and t not in seen:
+            seen.add(t)
+            uniq.append(t)
+    return uniq
+
+
+def club_names(html: str) -> list[str]:
+    m = re.search(r"^const BARCA_DATA=(\{.*\});[ \t]*$", html, re.M)
+    names: list[str] = ['برشلونة']
+    if m:
+        for fixture in re.findall(r'"m":\s*"([^"]+)"', m.group(1)):
+            for part in re.split(r'\s*[×xX]\s*', fixture):
+                part = part.strip()
+                if part and part not in names:
+                    names.append(part)
+    return names
+
+
+def refresh_clubs(html: str) -> tuple[str, int]:
+    """شعارات الأندية بمفاتيح عربية (أسماء الفرق كما تظهر في بيانات المنصة)."""
+    found = CLUBS_RE.search(html)
+    existing: dict[str, str] = {}
+    if found:
+        try:
+            existing = json.loads(found.group(0)[len('const CLUBS='):-1])
+        except ValueError:
+            existing = {}
+    cache = load_cache()
+    out: dict[str, str] = {}
+    added = 0
+    for arabic in club_names(html):
+        page = CLUB_PAGES.get(arabic)
+        if not page:
+            continue
+        img = existing.get(arabic) or existing.get(page) or cache.get('CLUBS:' + page, '')
+        if not img:
+            try:
+                img = wiki_thumb(page)
+            except Exception as exc:  # noqa: BLE001
+                print(f"   · CLUBS {arabic!r} skipped — {type(exc).__name__}")
+                img = ''
+            cache['CLUBS:' + page] = img
+            time.sleep(0.5)
+        if img:
+            out[arabic] = img
+            added += 1
+    save_cache(cache)
+    block = 'const CLUBS=' + js_json(out) + ';'
+    if found:
+        html = CLUBS_RE.sub(lambda _m: block, html, count=1)
+    else:
+        html = re.sub(r"^(const CURATED_AT=)", block + r"\n\1", html, count=1, flags=re.M)
+    return html, added
+
+
+def refresh_wiki_map(html: str, kind: str, titles: list[str], budget: int = 70) -> tuple[str, int]:
+    """يكتب/يحدّث const POSTERS أو const CLUBS بصورة حقيقية لكل عنوان (بلا تكرار)."""
+    reg = POSTERS_RE if kind == 'POSTERS' else CLUBS_RE
+    found = reg.search(html)
+    existing: dict[str, str] = {}
+    if found:
+        try:
+            existing = json.loads(found.group(0)[len('const ' + kind + '='):-1])
+        except ValueError:
+            existing = {}
+    cache = load_cache()
+    added = 0
+    for title in titles:
+        if not title or existing.get(title):
+            continue
+        if budget <= 0:
+            break
+        key = kind + ':' + title
+        img = cache.get(key, '')
+        if not img:
+            try:
+                img = wiki_thumb(title)
+            except Exception as exc:  # noqa: BLE001 - عنوان واحد لا يوقف التشغيل
+                print(f"   · {kind} {title!r} skipped — {type(exc).__name__}")
+                img = ''
+            cache[key] = img
+            budget -= 1
+            time.sleep(0.6 if img else 0.2)
+        if img:
+            existing[title] = img
+            added += 1
+    save_cache(cache)
+    block = 'const ' + kind + '=' + js_json(existing) + ';'
+    if found:
+        html = reg.sub(lambda _m: block, html, count=1)
+    else:
+        html = re.sub(r"^(const CURATED_AT=)", block + r"\n\1", html, count=1, flags=re.M)
+    return html, added
+
+
 def fill_og(curated: dict, snapshot: dict) -> int:
     """يكمل الصور الناقصة في CURATED/SNAPSHOT من og:image — بعدد محدود لكل تشغيل."""
     cands = []
@@ -334,6 +510,11 @@ def main() -> int:
     after = (json.dumps(curated, ensure_ascii=False, sort_keys=True),
              json.dumps(snapshot, ensure_ascii=False, sort_keys=True))
     changed = before != after
+
+    # صور حقيقية: بوسترات الأفلام + شعارات الأندية (تُكمَّل مرة واحدة وتُحفظ في index.html)
+    html, posters = refresh_wiki_map(html, 'POSTERS', movie_titles(html))
+    html, crests = refresh_clubs(html)
+    print(f'   · صور: {posters} بوستر فيلم · {crests} شعار نادٍ')
 
     now = datetime.now(RIYADH).replace(microsecond=0)
     stamp_line = f'const CURATED_AT="{now.isoformat()}";'
