@@ -2938,7 +2938,21 @@ function catMount(id, list, title){
 }
 
 /* ===== الأنمي — بوسترات AniList + تريلرات + تقييمات ===== */
-const AGENRES=[['Action','أكشن'],['Adventure','مغامرة'],['Comedy','كوميدي'],['Drama','دراما'],['Fantasy','فانتازيا'],['Isekai*','إيسيكاي'],['Ecchi','إتشي'],['Horror','رعب'],['Romance','رومانسي'],['Sci-Fi','خيال علمي'],['Sports','رياضة'],['HENTAI','هنتاي · +18']];
+const AGENRES=[['Action','أكشن'],['Adventure','مغامرة'],['Comedy','كوميدي'],['Drama','دراما'],['Fantasy','فانتازيا'],['Isekai*','إيسيكاي'],['Ecchi','إتشي'],['Horror','رعب'],['Romance','رومانسي'],['HAREM','حريم'],['Sci-Fi','خيال علمي'],['Sports','رياضة'],['HENTAI','هنتاي · +18']];
+const HAREM_TOP=[{"t":"Monogatari Series: Second Season","en":"Monogatari Series Second Season","sc":88,"ep":26,"l":"https://anilist.co/anime/17074","img":"https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx17074-xMhVAZsEDH66.png"},{"t":"Dandadan 2nd Season","en":"DAN DA DAN Season 2","sc":83,"ep":12,"l":"https://anilist.co/anime/185660","img":"https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx185660-uB8RUMBGovGr.jpg"},{"t":"Saenai Heroine no Sodatekata Fine","en":"Saekano the Movie: Finale","sc":83,"ep":1,"l":"https://anilist.co/anime/100675","img":"https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx100675-Ut2Qyi9gYOKT.png"},{"t":"Bakemonogatari","en":"Bakemonogatari","sc":82,"ep":15,"l":"https://anilist.co/anime/5081","img":"https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx5081-9GocceQ5Z865.jpg"},{"t":"Yahari Ore no Seishun Love Come wa Machigatteiru. Kan","en":"My Teen Romantic Comedy SNAFU Climax!","sc":82,"ep":12,"l":"https://anilist.co/anime/108489","img":"https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx108489-yGmYCE6dhFta.png"},{"t":"Dungeon ni Deai wo Motomeru no wa Machigatteiru Darou ka IV: Shin Shou Yakusai-hen","en":"Is It Wrong to Try to Pick Up Girls in a Dungeon? IV Part 2","sc":82,"ep":11,"l":"https://anilist.co/anime/155211","img":"https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx155211-GHT9uzXEkYS7.png"},{"t":"Fruits Basket: 1st Season","en":"Fruits Basket (2019)","sc":82,"ep":25,"l":"https://anilist.co/anime/105334","img":"https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx105334-AZwEdMu4KFtV.jpg"},{"t":"Yahari Ore no Seishun Love Come wa Machigatteiru. Zoku","en":"My Teen Romantic Comedy SNAFU TOO!","sc":81,"ep":13,"l":"https://anilist.co/anime/20698","img":"https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx20698-YZIYor2zW3Ta.png"},{"t":"Seishun Buta Yarou wa Bunny Girl Senpai no Yume wo Minai","en":"Rascal Does Not Dream of Bunny Girl Senpai","sc":81,"ep":13,"l":"https://anilist.co/anime/101291","img":"https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx101291-wfEdgPqtfU0l.jpg"},{"t":"Ouran Koukou Host Club","en":"Ouran High School Host Club","sc":80,"ep":26,"l":"https://anilist.co/anime/853","img":"https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx853-fiUtW8yohsSF.jpg"}];
+/* نسخة احتياطية لتبويب «حريم» لو تعذّر AniList — بطاقات بنفس الشكل */
+function haremFallback(){
+  return HAREM_TOP.map((m,ix)=>{
+    const nm=arTitle({title:{romaji:m.t,english:m.en}})||m.t;
+    const cov=m.img||fbImg(m.t,'ア');
+    const k=vReg({t:nm,d:'أنمي · حريم',s:'AniList',l:m.l||'',img:cov,p:Date.now(),sec:'anime'},{anime:m});
+    return '<article class="n-item v8card" data-k="'+k+'" style="cursor:pointer">'
+      + '<div class="thumbWrap">'+firstImg({img:cov},'ア')+(ix===0?'<span class="crown">المتصدر</span>':'<span class="mood tech">#'+(ix+1)+'</span>')+'</div>'
+      + '<div class="t">'+escHtml(nm)+'</div>'
+      + '<div class="rateRow"><b>'+(m.sc||'—')+'</b><span class="pbar" style="flex:1"><i style="--w:'+Math.max(2,Math.min(100,m.sc||0))+'%"></i></span><span>'+(m.ep?'حلقات '+m.ep:'')+'</span></div>'
+      + '<div class="meta"><b>AniList</b><span>نسخة محفوظة</span></div></article>';
+  }).join('');
+}
 const AR_MAP={'Frieren':'فريرين','Fullmetal':'الخيميائي الفولاذي','Steins':'ستاينز غيت','Gintama':'جينتاما','Shingeki':'هجوم العمالقة','Attack on Titan':'هجوم العمالقة','Hunter':'هنتر × هنتر','One Piece':'ون بيس','Death Note':'مذكرة الموت','Code Geass':'كود غياس','Cowboy':'كاوبوي بيبوب','Monster':'مونستر','Vinland':'ملحمة فينلاند','Mob Psycho':'موب سايكو','Violet':'فيوليت إيفرغاردن','Jujutsu':'جوجوتسو كايسن','Demon Slayer':'قاتل الشياطين','Kimetsu':'قاتل الشياطين','Spy':'عائلة سباي','Oshi no Ko':'طفل النجم','Bleach':'بليتش','Naruto':'ناروتو','Kingdom':'مملكة','Berserk':'بيرسيرك','Clannad':'كلاناد','March':'مارش يأتي كأسد','Ping Pong':'بينغ بونغ','Hyouka':'هيوكا','Great Pretender':'المحتال العظيم','Kaguya':'كاغويا','Odd Taxi':'أود تاكسي','Pluto':'بلوتو','Dororo':'دورورو','Abyss':'صُنع في الهاوية','Bocchi':'بوتشي ذا روك','Angel':'أنجل بيتس','Legend of the Galactic':'ملحمة أبطال المجرة','Haikyu':'هايكيو','Blue Lock':'بلو لوك','Chainsaw':'رجل المنشار','Solo Leveling':'رفع المستوى بمفردي','Kusuriya':'دفتريات الصيدلانية','Fruit':'سلة الفواكه','Nana':'نانا','Horimiya':'هوريميا','Oregairu':'أوريكايرو','Monogatari':'مونوغاتاري','Ranma':'رانما','Yu Yu':'يوشي شويشن'};
 function arTitle(m){ const t=(m.title&&(m.title.romaji||m.title.english||''))||''; for(const k in AR_MAP){ if(t.toLowerCase().includes(k.toLowerCase())) return AR_MAP[k]+' · '+t; } return t; }
 async function viewAnime(sec, force){
@@ -2950,7 +2964,8 @@ async function viewAnime(sec, force){
     document.querySelector(`#ag button[data-g="${i}"]`).classList.add('on');
     const [en,ar]=AGENRES[i];
     const isH=en==='HENTAI';
-    const filt=isH?'genre:"Hentai"':(en.endsWith('*')?`tag:"${en.slice(0,-1)}"`:`genre:"${en}"`);
+    const isHarem=en==='HAREM';
+    const filt=isH?'genre:"Hentai"':(isHarem?'tag_in:["Female Harem"],genre_in:["Romance"]':(en.endsWith('*')?`tag:"${en.slice(0,-1)}"`:`genre:"${en}"`));
     const adult=isH?'true':'false';
     if(isH) $('#alist').innerHTML='<div class="panel">يجلب قائمة البالغين من AniList…</div>';
     $('#alist').innerHTML='<div class="panel">يجلب…</div>';
@@ -2975,7 +2990,12 @@ async function viewAnime(sec, force){
       $('#alist').innerHTML=`<h2 style="color:var(--gold);margin:12px 0 4px">أفضل 10 — ${ar}</h2><div class="cumNote" style="margin-bottom:8px">تراكمي · <b>${arch.length}</b> عملًا محفوظًا في هذا التصنيف</div><div class="news">${cards}</div>`;
       paintBooks();
       setStatus('ok', isH?'حية — AniList · تصنيف +18 · أفضل 10':'حية — AniList');
-    }catch(e){ $('#alist').innerHTML='<div class="panel">تعذر الوصول لـ AniList — جرب تحديث</div>'; setStatus('bad','تعذر الوصول'); }
+    }catch(e){
+      if(isHarem && typeof HAREM_TOP!=='undefined' && HAREM_TOP.length){
+        $('#alist').innerHTML=`<h2 style="color:var(--gold);margin:12px 0 4px">أفضل 10 — ${ar}</h2><div class="cumNote" style="margin-bottom:8px">نسخة محفوظة — AniList غير متاح الآن</div><div class="news">${haremFallback()}</div>`;
+        paintBooks(); setStatus('load','نسخة محفوظة — AniList غير متاح'); return;
+      }
+      $('#alist').innerHTML='<div class="panel">تعذر الوصول لـ AniList — جرب تحديث</div>'; setStatus('bad','تعذر الوصول'); }
   };
   $('#ag').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) show(+b.dataset.g); });
   show(0);
@@ -5335,7 +5355,7 @@ function kpiBox(ic, num, lbl, mini){
 
 addEventListener('hashchange', ()=>route());
 buildNav(); palBoot(); wireCards(); bpBoot(); briefBoot(); stamp(); route();
-(function(){ const b=document.createElement('div'); b.className='verBadge'; b.textContent='v14 · 28 نوفمبر'; document.body.appendChild(b); })();
+(function(){ const b=document.createElement('div'); b.className='verBadge'; b.textContent='v15 · 28 نوفمبر'; document.body.appendChild(b); })();
 addEventListener('load',()=>{ try{ favSweep(); favBoard(); }catch(e){} });
 
 </script>
