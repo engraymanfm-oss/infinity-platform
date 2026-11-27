@@ -2577,7 +2577,9 @@ function boShow(which){
   const body=document.getElementById('boBody'); if(!body) return;
   document.querySelectorAll('#boSwitch button').forEach(b=>{ const on=b.dataset.bo===which; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); });
   if(which==='soon'){
-    body.innerHTML=`<div class="boMeta"><span>قريباً · Coming Soon · ${BOX_OFFICE.soon.length} فيلماً بمواعيد عرض معلنة في السعودية</span><span>مرتبة حسب تاريخ العرض</span></div><div class="boList">${BOX_OFFICE.soon.map(m=>boCard(m,'soon')).join('')}</div>`;
+    const soonKey=m=>parseArDate(((m.rows&&m.rows[0]&&m.rows[0][1])||m.date),12)||9e15;
+    const soonSorted=BOX_OFFICE.soon.slice().sort((a,b)=>soonKey(a)-soonKey(b));
+    body.innerHTML=`<div class="boMeta"><span>قريباً · Coming Soon · ${soonSorted.length} فيلماً بمواعيد عرض معلنة</span><span>مرتبة حسب تاريخ العرض</span></div><div class="boList">${soonSorted.map(m=>boCard(m,'soon')).join('')}</div>`;
     return;
   }
   body.innerHTML=`<div class="boMeta"><span>في السينما الآن · Now Playing · ${BOX_OFFICE.now.length} فيلماً في شباك العالم</span><span>${BOX_OFFICE.weekend}</span><span>الأرقام بملايين الدولارات كما أعلنتها الاستوديوهات</span></div>`+boBars()+`<div class="boPanel"><h3>ترتيب شباك العالم</h3><div class="boList">${BOX_OFFICE.now.map(m=>boCard(m,'now')).join('')}</div></div><div class="boPanel"><h3>جديد هذا الأسبوع في سينمات السعودية</h3><div class="boList">${BOX_OFFICE.fresh.map(m=>boCard(m,'fresh')).join('')}</div></div>`;
