@@ -69,7 +69,7 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " InfinityApp/1.0");
+        s.setUserAgentString(s.getUserAgentString() + " InfinityApp/2.0");
 
         CookieManager.getInstance().setAcceptCookie(true);
         web.setBackgroundColor(Color.parseColor("#050506"));
