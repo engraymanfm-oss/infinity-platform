@@ -657,7 +657,7 @@ nav button:hover svg{transform:translateY(-2px) scale(1.08)}
 .sheetActs .sbtn.on{background:var(--gold);color:var(--black);border-color:var(--gold)}
 
 /* ===== إيجاز 30 ثانية / الورقة العامة ===== */
-.briefCard{background:rgba(0,34,75,.6);border:1px solid var(--line);border-radius:14px;padding:11px 13px;margin:8px 18px}
+.briefCard{background:rgba(0,34,75,.6);border:1px solid var(--line);border-radius:14px;padding:8px 12px;margin:7px 18px}
 .briefCard h4{color:var(--sky);font-size:.8rem;margin-bottom:5px;font-family:'IBM Plex Sans Arabic',sans-serif}
 .briefCard ul{margin:0;padding-inline-start:16px;color:var(--stone);font-size:.82rem;line-height:1.75}
 .briefCard a{color:var(--white)}
@@ -2681,10 +2681,12 @@ function briefData(){
   const ar = {};
   (typeof NSECTIONS !== 'undefined' ? NSECTIONS : []).forEach(s => { ar[s.id] = s.label; });
   const SE = (typeof SEC_FEEDS !== 'undefined') ? SEC_FEEDS : {};
+  const PREF = {latest:['AJ','CNN','SKY'], ksa:['SKY','AJEL','ARG'], mideast:['CNN','F24','AJ'], econW:['ARGW','RT'],
+                tech:['AIT','VERGE'], football:['AJ','SKY'], movies:['VARIETY','SKY','CNN'], anime:['ANN','MALN','VERGE'], selfdev:['BBC','F24']};
   const secs = ['latest','ksa','mideast','econW','tech','football','movies','anime','selfdev'];
   const out = [];
   secs.forEach(id => {
-    const feeds = SE[id] || [];
+    const feeds = PREF[id] || SE[id] || [];
     for(const fk of feeds){
       const pool = (typeof CURATED !== 'undefined' && CURATED && CURATED[fk]) ? CURATED[fk] : [];
       if(pool && pool.length){
