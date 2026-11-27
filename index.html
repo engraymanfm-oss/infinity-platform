@@ -4663,6 +4663,7 @@ function brTick(ts){
 function brLoopNext(){ cancelAnimationFrame(BR.raf); BR.last = 0; BR.raf = requestAnimationFrame(brTick); }
 function brPlay(){
   if(BR.playing) return;
+  brVoiceNote('');
   if(BR.done){ brEndHide(); brGo(0); }
   BR.playing = true;
   const st = document.getElementById('brStage'); if(st) st.classList.remove('paused');
@@ -4748,6 +4749,8 @@ function openBrief(){
     return;
   }
   brRender();
+  const vb = document.getElementById('brVoice');
+  if(vb){ vb.classList.toggle('on', BR.voice); vb.setAttribute('aria-pressed', BR.voice ? 'true' : 'false'); vb.title = BR.voice ? 'إيقاف القراءة الصوتية' : 'قراءة صوتية'; }
   const endSub = document.getElementById('brEndSub');
   if(endSub) endSub.textContent = BR.items.length + ' بطاقات · ' + Math.round(BR.items.length * BR.dur / 1000) + ' ثانية · كل بطاقة من مصدرها';
   BR.playing = true;
