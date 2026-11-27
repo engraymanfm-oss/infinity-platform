@@ -1228,8 +1228,11 @@ body{overflow-x:hidden}
 #briefWrap.on{display:flex;align-items:center;justify-content:center}
 body.briefOpen{overflow:hidden}
 .brStage{position:relative;width:min(100vw,440px);height:min(100dvh,calc(min(100vw,440px)*1.7778));max-height:100dvh;overflow:hidden;background:#050506;isolation:isolate}
+@media (max-width:619px){
+  .brStage{width:100vw;height:100dvh;max-height:100dvh;border-radius:0}
+}
 @media (min-width:620px){
-  .brStage{height:min(88vh,780px);border-radius:24px;border:1px solid rgba(240,225,196,.38);box-shadow:0 30px 90px rgba(0,0,0,.72)}
+  .brStage{width:min(100vw,440px);height:min(88vh,780px);border-radius:24px;border:1px solid rgba(240,225,196,.38);box-shadow:0 30px 90px rgba(0,0,0,.72)}
 }
 .brSlide{position:absolute;inset:0;opacity:0;visibility:hidden;transition:opacity .45s ease;pointer-events:none}
 .brSlide.on{opacity:1;visibility:visible;pointer-events:auto}
@@ -1237,10 +1240,10 @@ body.briefOpen{overflow:hidden}
 .brMedia img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scale(1.02)}
 .brSlide.on .brMedia img{animation:brKen 5.6s ease-out both}
 .brSlide.alt.on .brMedia img{animation-name:brKenAlt}
-@keyframes brKen{from{transform:scale(1.02) translate3d(0,0,0)}to{transform:scale(1.17) translate3d(-2%,-2%,0)}}
-@keyframes brKenAlt{from{transform:scale(1.17) translate3d(2%,1%,0)}to{transform:scale(1.02) translate3d(0,0,0)}}
+@keyframes brKen{from{transform:scale(1) translate3d(0,0,0)}to{transform:scale(1.09) translate3d(-1%,-1%,0)}}
+@keyframes brKenAlt{from{transform:scale(1.09) translate3d(1%,1%,0)}to{transform:scale(1) translate3d(0,0,0)}}
 @media (prefers-reduced-motion:reduce){.brSlide.on .brMedia img{animation:none}}
-.brShade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,5,6,.74) 0%,rgba(5,5,6,.06) 24%,rgba(5,5,6,.34) 52%,rgba(5,5,6,.95) 100%)}
+.brShade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,5,6,.76) 0%,rgba(5,5,6,.18) 22%,rgba(5,5,6,.5) 50%,rgba(5,5,6,.96) 100%)}
 .brProg{position:absolute;top:0;inset-inline:0;z-index:7;display:flex;gap:4px;padding:9px 10px 0}
 .brSeg{flex:1 1 0;height:3px;border-radius:99px;background:rgba(255,255,255,.26);overflow:hidden}
 .brSeg i{display:block;height:100%;width:0;background:#F0E1C4;border-radius:99px}
