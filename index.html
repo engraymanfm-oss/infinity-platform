@@ -840,6 +840,11 @@ body{overflow-x:hidden}
 .kcard .klbl{color:var(--stone);font-size:.68rem;line-height:1.5}
 .kcard .kgo{margin-top:auto;font-size:.68rem;color:var(--sky);text-decoration:none;display:inline-flex;gap:4px;align-items:center}
 .kcard .kgo:hover{color:var(--gold)}
+/* بطاقات «نظرة سريعة» وبطاقة المقارنة: السطح كله قابل للنقر */
+.kcard[data-href],#v9vs[data-href]{cursor:pointer;transition:border-color .25s,box-shadow .25s,transform .25s}
+.kcard[data-href]:hover,#v9vs[data-href]:hover{border-color:rgba(127,178,229,.55);box-shadow:0 8px 24px rgba(5,5,6,.42)}
+.kcard[data-href]:active,#v9vs[data-href]:active{transform:translateY(1px)}
+.kcard[data-href]:focus-visible,#v9vs[data-href]:focus-visible{outline:2px solid var(--sky);outline-offset:3px}
 .barsV{display:flex;align-items:flex-end;gap:4px;height:58px;margin-top:2px;width:100%;max-width:100%;min-width:0;overflow:hidden}
 .barsV i{flex:1 1 0;display:block;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#7FB2E5,#3875B0);min-height:8px;min-width:0;max-width:100%;transition:height .5s ease}
 .barsV i.top{background:linear-gradient(180deg,#F0E1C4,#7FB2E5)}
@@ -1776,6 +1781,7 @@ function homeHero(){
     <section class="bk" id="v9smart"></section>
   </div>`;
   try{ v9Home(); }catch(e){ console.warn('v9Home', e); }
+  try{ wireCardLinks(); }catch(e){}
   window.scrollTo({top:0});
 }
 
@@ -1950,6 +1956,31 @@ function homeNewsPicks(limit){
   return picks.slice(0, want);
 }
 
+/* بطاقات «نظرة سريعة» وVS: النقر على أي جزء من البطاقة يفتح وجهتها */
+function wireCardLinks(){
+  if(window.__cardLinks) return; window.__cardLinks = 1;
+  const ctrl = t => !!(t && t.closest && t.closest('a,button,input,select,textarea,label,summary,[data-nogo]'));
+  const go = el => {
+    const h = (el && el.dataset) ? el.dataset.href : '';
+    if(!h) return;
+    if(location.hash === h){ try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(_e){ window.scrollTo(0,0); } }
+    else location.hash = h;
+  };
+  document.addEventListener('click', e => {
+    const card = (e.target && e.target.closest) ? e.target.closest('.kcard[data-href],#v9vs[data-href]') : null;
+    if(!card) return;
+    if(e.target !== card && ctrl(e.target)) return;   /* أزرار ومفاتيح داخل البطاقة تشتغل لحالها */
+    if(window.getSelection && String(window.getSelection()).length) return;
+    go(card);
+  });
+  document.addEventListener('keydown', e => {
+    if(e.key !== 'Enter' && e.key !== ' ') return;
+    const card = (e.target && e.target.closest) ? e.target.closest('.kcard[data-href],#v9vs[data-href]') : null;
+    if(!card || e.target !== card) return;
+    e.preventDefault(); go(card);
+  });
+}
+
 /* ---------- الرئيسية: تعبئة الشبكة ---------- */
 function v9Home(){
   const n = platformNums();
@@ -1975,20 +2006,20 @@ function v9Home(){
   const kbox = document.getElementById('v9kpi');
   if(kbox){
     kbox.innerHTML =
-      `<article class="kcard urgent">
+      `<article class="kcard urgent" data-href="#/news" role="link" tabindex="0" aria-label="عاجل — عرض كل الأخبار">
          <div class="kh">${IC.feed}عاجل</div>
          <div class="knum" data-count="${brk}">${brk}</div>
          <div class="klbl">${(today.length ? today.slice(0,2) : pool.slice(0,2)).map(x => '<span class="brkLine">• ' + escHtml(String(x.t || '').slice(0,52)) + '…</span>').join('') || 'خبر عاجل اليوم من مصادر المنصة'}</div>
          <a class="kgo" href="#/news">عرض كل الأخبار ←</a>
        </article>`
-    + `<article class="kcard">
+    + `<article class="kcard" data-href="#/news/movies" role="link" tabindex="0" aria-label="شباك التذاكر — التفاصيل الكاملة">
          <div class="kh">${IC.pieIc}شباك التذاكر</div>
          <div class="knum" style="font-size:1.45rem">${bo.length ? boM(bo[0][1]) : '—'}</div>
          <div class="barsV" role="img" aria-label="إيرادات شباك التذاكر للأفلام الخمسة الأولى">${bo.map((r,i) => `<i class="${i===0?'top':''}" style="height:${Math.max(9, Math.round(Math.sqrt(r[1] / bomax) * 56))}px" title="${escHtml(r[0])} · ${boM(r[1])}" aria-label="${escHtml(r[0])} · ${boM(r[1])}"></i>`).join('')}</div>
          <div class="barsVX"><span title="${escHtml((bo[0]||[''])[0])}">${escHtml(boShort((bo[0]||[''])[0]))}</span><span title="${escHtml((bo[4]||[''])[0])}">${escHtml(boShort((bo[4]||[''])[0]))}</span></div>
          <a class="kgo" href="#/news/movies">التفاصيل الكاملة ←</a>
        </article>`
-    + `<article class="kcard" id="cdBox" data-ts="${nm ? nm.ts : 0}">
+    + `<article class="kcard" id="cdBox" data-ts="${nm ? nm.ts : 0}" data-href="#/news/barca" role="link" tabindex="0" aria-label="مباراة قادمة — بطاقة النادي">
          <div class="kh">${IC.ball}مباراة مباشرة / قادمة</div>
          ${nm ? (() => {
             const sides=String(nm.f.m||'').split(/\s*[×xX]\s*/).map(x=>x.trim()).filter(Boolean);
@@ -2000,7 +2031,7 @@ function v9Home(){
               : `<div class="klbl">ما فيه مباراة قادمة مسجلة — شوف بطاقة النادي</div>`}
          <a class="kgo" href="#/news/barca">عرض البطاقة ←</a>
        </article>`
-    + `<article class="kcard">
+    + `<article class="kcard" data-href="#/news" role="link" tabindex="0" aria-label="التحديثات اليومية — استكشف الآن">
          <div class="kh">${IC.clockIc}التحديثات اليومية</div>
          <div style="display:flex;align-items:flex-end;gap:8px"><div class="knum" data-count="${n.news}">${n.news}</div><div class="starBadge">★</div></div>
          <div class="klbl">تحديث تراكمي · ${new Intl.DateTimeFormat(L,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Riyadh'}).format(upd)}</div>
@@ -2081,6 +2112,7 @@ function v9Home(){
         lImg = A ? `<span class="vsImg">${phoneArt(A,'phArtVs',44)}</span>` : '';
         rImg = B ? `<span class="vsImg">${phoneArt(B,'phArtVs',44)}</span>` : '';
       }
+      if(vsBox) vsBox.dataset.href = (kind === 'ai') ? '#/ai' : '#/devices';
       return `<div class="vsHead"><h2 style="color:var(--gold);font-size:.98rem;font-family:'Amiri',serif;display:flex;gap:8px;align-items:center">${IC.target}مقارنة تفاعلية</h2>
         <div class="vsToggle" id="vsToggle"><button data-k="phones" class="${kind === 'phones' ? 'on' : ''}">هواتف</button><button data-k="ai" class="${kind === 'ai' ? 'on' : ''}">ذكاء اصطناعي</button></div></div>
         <div class="vsTop">
@@ -2096,6 +2128,9 @@ function v9Home(){
         <div class="vsFoot"><a href="${lHref}">عرض التفاصيل ←</a><a href="${rHref}" style="margin-inline-start:auto">بطاقة المقارنة ←</a></div>`;
     };
     let kind = 'phones';
+    vsBox.dataset.href = '#/devices';
+    vsBox.setAttribute('role','link'); vsBox.setAttribute('tabindex','0');
+    vsBox.style.cursor = 'pointer';
     vsBox.innerHTML = render(kind);
     vsBox.addEventListener('click', e => {
       const b = e.target.closest('#vsToggle button'); if(!b) return;
@@ -2482,15 +2517,12 @@ const BOX_OFFICE={
    {date:'2 ديسمبر',t:'Dune: Part One وPart Two · إعادة عرض',sub:'خيال علمي · إعادة إصدار على شاشات السعودية',
     tags:[['إعادة عرض','']],
     rows:[['تاريخ العرض في السعودية','2 ديسمبر 2026',1,1],['التصنيف','18TC',0,1]]},
-   {date:'3 ديسمبر',t:'سبايدر-مان: يوم جديد',sub:'Spider-Man: Brand New Day · Tom Holland وZendaya وSadie Sink',
-    tags:[['الأضخم هذا الأسبوع','gold']],
-    rows:[['تاريخ العرض في السعودية','3 ديسمبر 2026',1,1],['التصنيف','18TC',0,1]]},
    {date:'3 ديسمبر',t:'ليلة عنيفة 2',sub:'Violent Night 2 · David Harbour وKristen Bell · أكشن وكوميديا',
     tags:[['عربي مترجم','']],
     rows:[['تاريخ العرض في السعودية','3 ديسمبر 2026',1,1],['التصنيف','18TC',0,1]]},
-   {date:'3 ديسمبر',t:'Maserati: The Brothers',sub:'Anthony Hopkins وAl Pacino وJessica Alba · دراما سباقات',
-    tags:[['إنتاج 2026','']],
-    rows:[['تاريخ العرض في السعودية','3 ديسمبر 2026',1,1],['القصة','من ورشة بولونيا 1914 إلى إنديانابوليس 500',0,1]]},
+   {date:'29 يناير',t:'Maserati: The Brothers',sub:'Anthony Hopkins وAl Pacino وJessica Alba · دراما سباقات',
+    tags:[['العرض الأمريكي','']],
+    rows:[['العرض الأمريكي','29 يناير 2027',1,1],['السعودية','لم يُعلن بعد',0,1],['القصة','من ورشة بولونيا 1914 إلى إنديانابوليس 500',0,1]]},
    {date:'3 ديسمبر',t:'Above the Below',sub:'Idris Elba وHero Fiennes Tiffin · إثارة وبقاء',
     tags:[['إخراج وتمثيل Idris Elba','']],
     rows:[['تاريخ العرض في السعودية','3 ديسمبر 2026',1,1],['القصة','ثلاثة رواد فضاء محاصرون في أعماق المحيط',0,1]]},
@@ -3750,7 +3782,7 @@ function buildNav(){
     box.id='sideTools'; box.className='sideTools';
     box.innerHTML='<div class="stHead">أقسام وأدوات</div>'
       + '<button type="button" data-go="#/news/movies">'+IC.film+'<span>الأفلام وشباك التذاكر</span></button>'
-      + '<button type="button" data-go="#/news/anime">'+IC.anime+'<span>الأنمي · بينها +18</span></button>'
+      + '<button type="button" data-go="#/news/anime">'+IC.anime+'<span>الأنمي</span></button>'
       + '<button type="button" data-go="#/news/barca">'+IC.barca+'<span>برشلونة والرياضة</span></button>'
       + '<button type="button" data-go="#/devices">'+IC.phone+'<span>مقارنة الأجهزة والجوالات</span></button>'
       + '<button type="button" data-go="#/news/selfdev">'+IC.book+'<span>تطوير الذات</span></button>'
@@ -4142,7 +4174,8 @@ function soonMovies(){
     const iso = parseArDate(((m.rows && m.rows[0] && m.rows[0][1]) || m.date), 12);
     const poster=(typeof POSTERS!=='undefined' && POSTERS[m.t]) ? POSTERS[m.t] : '';
     return {kind:'فيلم', t:m.t, sub:m.sub, date:m.date, ts:iso, img:poster || fbImg(m.t, m.t), url:'', tags:(m.tags || []).map(x => x[0])};
-  }).sort((a, b) => (a.ts || 9e15) - (b.ts || 9e15));
+  }).filter(x => !x.ts || x.ts > Date.now())   /* اللي مضى عرضه ما يظهر في «المرتقب» */
+    .sort((a, b) => (a.ts || 9e15) - (b.ts || 9e15));
 }
 async function soonAnime(){
   const Q = '{Page(perPage:9){media(sort:POPULARITY_DESC,type:ANIME,status:NOT_YET_RELEASED){title{romaji english}startDate{year month day}siteUrl coverImage{large}genres}}}';
