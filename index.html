@@ -1150,6 +1150,17 @@ body{overflow-x:hidden}
   .vsLine{grid-template-columns:30px minmax(0,1fr) 64px minmax(0,1fr) 30px}
 }
 
+
+.tbSearch{min-width:0}
+.tbSearch input{width:100%;min-width:0;flex:1 1 auto}
+@media (max-width:1080px){
+  .topbar{gap:6px}
+  .tbSearch{flex:1 1 auto;max-width:none;padding:0 8px;min-width:0}
+  .tbPill{margin-inline-start:0;padding:8px 9px}
+  .tbFav{padding:7px 9px}
+  .tbMenu{flex:0 0 auto}
+}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js" onerror="window.__echartsFail=1"></script>
 </head>
