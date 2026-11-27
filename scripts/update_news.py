@@ -460,6 +460,88 @@ def fill_og(curated: dict, snapshot: dict) -> int:
     return found
 
 
+def _js_array(block: str, key: str) -> list:
+    """يقرأ مصفوفة JS بسيطة (كائنات نصية) من نص الكتالوج."""
+    i = block.find(key + ":[")
+    if i < 0:
+        return []
+    start = block.index("[", i)
+    depth = 0
+    in_str = False
+    esc = False
+    for j in range(start, len(block)):
+        ch = block[j]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+        else:
+            if ch == '"':
+                in_str = True
+            elif ch == "[":
+                depth += 1
+            elif ch == "]":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        return json.loads(block[start:j + 1])
+                    except Exception:
+                        return []
+    return []
+
+
+AR_MONTHS_AR = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+                "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"]
+
+
+def merge_catalog(html: str) -> tuple[str, int]:
+    """يدمج كتالوج الأفلام الجديد (scripts/catalog.json) في MOVIE_CATALOG بلا حذف أي عنوان قديم."""
+    p = ROOT / "scripts" / "catalog.json"
+    if not p.exists():
+        return html, 0
+    try:
+        cat = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return html, 0
+    m = re.search(r"const MOVIE_CATALOG=\{.*?\};\n", html, re.S)
+    if not m:
+        return html, 0
+    block = m.group(0)
+
+    def comp(x):
+        return {"n": x.get("en", ""), "a": x.get("ar", ""),
+                "d": "%04d-%02d-%02d" % (x.get("y", 0), x.get("m", 1), x.get("d", 1)),
+                "g": (x.get("g") or [])[:2], "i": x.get("img", ""),
+                "u": x.get("page", ""), "s": x.get("studio", "")}
+
+    new = [comp(x) for x in cat if x.get("en")]
+    old_recent = _js_array(block, "recent")
+    old_up = _js_array(block, "upcoming")
+    today = datetime.now(RIYADH).date().isoformat()
+
+    def merge(old, items, desc):
+        seen = {o.get("n") for o in old}
+        out = list(old) + [n for n in items if n.get("n") not in seen]
+        out.sort(key=lambda x: x.get("d", ""), reverse=desc)
+        return out[:220]
+
+    recent = merge(old_recent, [x for x in new if x["d"] <= today], True)
+    up = merge(old_up, [x for x in new if x["d"] > today], False)
+    d = datetime.now(RIYADH).date()
+    stamp = "%d %s %d" % (d.day, AR_MONTHS_AR[d.month - 1], d.year)
+    line = ("const MOVIE_CATALOG={updated:'%s',recent:%s,upcoming:%s};\n"
+            % (stamp, json.dumps(recent, ensure_ascii=False, separators=(",", ":")),
+               json.dumps(up, ensure_ascii=False, separators=(",", ":"))))
+    return html[:m.start()] + line + html[m.end():], len(recent) + len(up)
+
+
+def js_json_pairs(items) -> str:
+    return json.dumps(items, ensure_ascii=False, separators=(",", ":"))
+
+
 def main() -> int:
     if not INDEX.exists():
         print(f"!! {INDEX} not found", file=sys.stderr)
@@ -549,6 +631,10 @@ def main() -> int:
                           html, count=1, flags=re.M)
             html = re.sub(r"^const SNAPSHOT=\{.*\};[ \t]*$", "const SNAPSHOT=" + js_json(snapshot) + ";",
                           html, count=1, flags=re.M)
+        # كتالوج الأفلام: دمج تراكمي (لا يُحذف عنوان قديم) من scripts/catalog.json
+        html, cat_n = merge_catalog(html)
+        if cat_n:
+            print(f"movie catalog merged · {cat_n} titles", file=sys.stderr)
         INDEX.write_text(html, encoding="utf-8")
 
     total = sum(len(v) for v in results.values())
