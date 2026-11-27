@@ -1194,6 +1194,11 @@ body{overflow-x:hidden}
 .sideTools button svg{width:18px;height:18px;flex:0 0 auto;color:var(--sky)}
 .sideTools button span{line-height:1.35}
 
+@media (max-width:1080px){
+  /* سياق تكديس واحد للدرج والخلفية: بدونه يطفو الحجاب فوق الدرج */
+  .v9shell{z-index:auto}
+}
+
 /* ===== إيجاز 30 ثانية — مشغّل ريل متحرك ===== */
 #briefWrap{position:fixed;inset:0;z-index:400;display:none;background:rgba(5,5,6,.95);backdrop-filter:blur(10px)}
 #briefWrap.on{display:flex;align-items:center;justify-content:center}
@@ -2492,9 +2497,9 @@ const boM=v=>'$'+(v>=100?String(Math.round(v)):String(v))+'M';
 /* اسم فيلم مختصر لسطر محور الرسم — بلا قص داخل الكلمة */
 function boShort(s){
   const t=String(s||'').split(':')[0].trim();
-  if(t.length<=13) return t;
-  const cut=t.slice(0,13); const sp=cut.lastIndexOf(' ');
-  return (sp>5?cut.slice(0,sp):cut).trim();
+  if(t.length<=18) return t;
+  const cut=t.slice(0,18); const sp=cut.lastIndexOf(' ');
+  return (sp>7?cut.slice(0,sp):cut).trim();
 }
 function boCard(m,kind){
   const badge=kind==='soon'?`<span class="boDate">${m.date}</span>`:(m.rank?`<span class="boRank">${m.rank}</span>`:`<span class="boDate">${m.date||'جديد'}</span>`);
