@@ -2575,11 +2575,11 @@ function viewMovies(sec, force){
 }
 
 /* ===== كتالوج الأفلام: بوسترات حقيقية + أنواع + تواريخ + رابط الصفحة ===== */
-const AR_MONTHS=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const AR_MONTH_NAMES=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 function catDateAr(d){
   if(!d) return '';
   const p=String(d).split('-');
-  return (+p[2])+' '+(AR_MONTHS[(+p[1])-1]||'')+(p[0]!=='2026'?' '+p[0]:'');
+  return (+p[2])+' '+(AR_MONTH_NAMES[(+p[1])-1]||'')+(p[0]!=='2026'?' '+p[0]:'');
 }
 function catCardHTML(x){
   const title=x.a || x.n;
@@ -2699,7 +2699,7 @@ function anCardHTML(m){
   const cov=(m.coverImage&&m.coverImage.large)||fbImg(m.title&&m.title.romaji,'ア');
   const fb=fbImg(m.title&&m.title.romaji,'ア');
   const sd=m.startDate||{};
-  const date=sd.year?(sd.day?(sd.day+' '+(AR_MONTHS[(sd.month||1)-1]||'')):(AR_MONTHS[(sd.month||1)-1]||''))+' '+sd.year:'TBA';
+  const date=sd.year?(sd.day?(sd.day+' '+(AR_MONTH_NAMES[(sd.month||1)-1]||'')):(AR_MONTH_NAMES[(sd.month||1)-1]||''))+' '+sd.year:'TBA';
   const g=(m.genres||[]).slice(0,1).join(' · ');
   return '<article class="catCard">'
     + '<div class="catImgWrap"><img class="catImg" loading="lazy" decoding="async" alt="" src="'+escHtml(cov)+'" onerror="this.onerror=null;this.src=\''+fb+'\'">'
