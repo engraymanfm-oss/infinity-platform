@@ -708,6 +708,19 @@ nav button:hover svg{transform:translateY(-2px) scale(1.08)}
 .micBtn.rec{background:var(--gold);color:var(--black);animation:pulse 1s infinite}
 .micBtn.off{opacity:.4;cursor:not-allowed}
 
+.kcard.aiSpot{cursor:pointer;gap:6px}
+.kcard.aiSpot .kh{display:flex;align-items:center;gap:6px}
+.spotNext{margin-inline-start:auto;background:rgba(8,59,113,.7);border:1px solid rgba(127,178,229,.4);color:var(--gold);border-radius:8px;width:26px;height:24px;font-size:.8rem;cursor:pointer;font-family:inherit;line-height:1}
+.spotNext:hover{border-color:var(--gold)}
+.spotWho{display:flex;align-items:center;gap:9px;margin:6px 0 2px;min-width:0}
+.spotIco{flex:0 0 auto;width:40px;height:40px;border-radius:12px;overflow:hidden;background:#050506;border:1px solid rgba(240,225,196,.35);display:grid;place-items:center}
+.spotIco img{width:34px;height:34px;border-radius:9px;object-fit:contain;display:block}
+.spotTx{display:flex;flex-direction:column;min-width:0}
+.spotTx b{color:#fff;font-size:.98rem;line-height:1.3}
+.spotTx small{color:var(--dim);font-size:.62rem}
+.spotDesc{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;line-height:1.6}
+.kcard.aiSpot .kgo{margin-top:auto}
+
 /* ===== مختار الذكاء الثلاثي ===== */
 .pickerBox{background:linear-gradient(165deg,rgba(11,60,122,.5),rgba(0,34,75,.7));border:1px solid var(--line);border-radius:18px;padding:14px 16px;margin:12px 0}
 .pickerBox h2{color:var(--gold);font-size:1.02rem;margin-bottom:4px}
@@ -2254,13 +2267,9 @@ function v9Home(){
               : `<div class="klbl">ما فيه مباراة قادمة مسجلة — شوف بطاقة النادي</div>`}
          <a class="kgo" href="#/news/barca">عرض البطاقة ←</a>
        </article>`
-    + `<article class="kcard" data-href="#/news" role="link" tabindex="0" aria-label="التحديثات اليومية — استكشف الآن">
-         <div class="kh">${IC.clockIc}التحديثات اليومية</div>
-         <div style="display:flex;align-items:flex-end;gap:8px"><div class="knum" data-count="${n.news}">${n.news}</div><div class="starBadge">★</div></div>
-         <div class="klbl">تحديث تراكمي · ${new Intl.DateTimeFormat(L,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Riyadh'}).format(upd)}</div>
-         <a class="kgo" href="#/news">استكشف الآن ←</a>
-       </article>`;
+    + aiSpotHTML();
     countAll(kbox);
+    aiSpotWire(kbox);
     if(nm) tickCountdown();
   }
 
@@ -5273,13 +5282,60 @@ function v8Home(){
   }
   favBoard(); favPaint(); paintBooks();
 }
+/* ===== أداة ذكاء مختارة — تتغير كل تحميل، وبنقرة تفتح بطاقتها في #/ai ===== */
+let SPOT_IDX = null;
+function aiSpotList(){
+  return Object.keys((typeof AI_COMPANIES !== 'undefined' && AI_COMPANIES) ? AI_COMPANIES : {}).map(n => ({
+    name: n,
+    kind: (AI_COMPANIES[n] && AI_COMPANIES[n].kind) || '',
+    about: (AI_COMPANIES[n] && AI_COMPANIES[n].about) || (((AI_COMPANIES[n] || {}).strengths || [])[0] || ''),
+    match: (typeof aiMatch === 'function') ? aiMatch(n) : 0
+  })).sort((a, b) => b.match - a.match);
+}
+function aiSpotInner(s){
+  return '<div class="kh">' + IC.spark + 'أداة ذكاء مختارة<button class="spotNext" type="button" title="أداة أخرى" aria-label="أداة أخرى">↻</button></div>'
+    + '<div class="spotWho"><span class="spotIco">' + aiIcon(s.name, 'spotImg') + '</span>'
+    + '<span class="spotTx"><b>' + escHtml(s.name) + '</b><small>' + escHtml(s.kind) + ' · ' + s.match + '% تطابق</small></span></div>'
+    + '<div class="klbl spotDesc">' + escHtml(String(s.about).slice(0, 150)) + '</div>'
+    + '<span class="kgo">افتح بطاقتها ←</span>';
+}
+function aiSpotHTML(){
+  const list = aiSpotList();
+  if(!list.length) return '';
+  if(SPOT_IDX === null) SPOT_IDX = Math.floor(Math.random() * list.length);
+  const s = list[SPOT_IDX % list.length];
+  return '<article class="kcard aiSpot" data-spot="' + escHtml(s.name) + '" role="button" tabindex="0" aria-label="أداة ذكاء مختارة: ' + escHtml(s.name) + '">' + aiSpotInner(s) + '</article>';
+}
+function aiSpotWire(box){
+  const el = box && box.querySelector ? box.querySelector('[data-spot]') : null;
+  if(!el) return;
+  const open = () => {
+    const name = el.dataset.spot;
+    location.hash = '#/ai';
+    setTimeout(() => { try { aiCompanySheet(name); } catch(e){} }, 480);
+  };
+  el.addEventListener('click', e => {
+    const nx = e.target.closest ? e.target.closest('.spotNext') : null;
+    if(nx){
+      e.preventDefault(); e.stopPropagation();
+      const list = aiSpotList(); if(!list.length) return;
+      SPOT_IDX = ((SPOT_IDX === null ? 0 : SPOT_IDX) + 1) % list.length;
+      const s = list[SPOT_IDX];
+      el.dataset.spot = s.name;
+      el.innerHTML = aiSpotInner(s);
+      return;
+    }
+    e.preventDefault(); open();
+  });
+  el.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); open(); } });
+}
 function kpiBox(ic, num, lbl, mini){
   return '<div class="kpiBox"><div class="kic">' + ic + '</div><div class="knum" data-count="' + num + '">0</div><div class="klbl">' + escHtml(lbl) + '</div><div class="kmini">' + escHtml(mini || '') + '</div></div>';
 }
 
 addEventListener('hashchange', ()=>route());
 buildNav(); palBoot(); wireCards(); bpBoot(); briefBoot(); stamp(); route();
-(function(){ const b=document.createElement('div'); b.className='verBadge'; b.textContent='v13 · 28 نوفمبر'; document.body.appendChild(b); })();
+(function(){ const b=document.createElement('div'); b.className='verBadge'; b.textContent='v14 · 28 نوفمبر'; document.body.appendChild(b); })();
 addEventListener('load',()=>{ try{ favSweep(); favBoard(); }catch(e){} });
 
 </script>
