@@ -176,6 +176,83 @@ def parse_feed(raw: bytes, source_name: str) -> list[dict]:
     return out
 
 
+# ===== قواعد كل خلاصة: كل قسم من مصادره وبكلماته، بلا خلط ولا تكرار =====
+# الخلاصات التي تحمل اسماً عربياً في العنوان «الخبر - الناشر» تُفصل ليظهر الناشر كمصدر.
+GN_KEYS = {"GNKSA", "GNKSAE", "AIAR", "GAMES", "BARCAFEED", "FOOTFEED"}
+
+KEY_RULES: dict[str, dict] = {
+    "GNKSA": {
+        "must": ["السعودية", "المملكة", "الرياض", "جدة", "المدينة المنورة", "مكة", "الطائف", "أبها",
+                 "جازان", "الدمام", "الخبر", "القصيم", "حائل", "تبوك", "نجران", "عسير", "الباحة",
+                 "الجوف", "ينبع", "تاسي", "أرامكو", "مجلس الوزراء", "ولي العهد", "وزارة", "هيئة",
+                 "أمانة", "المرور", "الدفاع المدني", "المسجد النبوي", "الحرم", "أم القرى", "واس",
+                 "رؤية 2030", "نيوم", "القدية", "البحر الأحمر", "الشورى", "أمير منطقة"],
+        "block": ["غزة", "إسرائيل", "أوكرانيا", "الحوثي", "السودان", "لبنان", "سوريا", "العراق",
+                  "مصر", "تركيا", "أمريكا", "ترامب", "الاتحاد الأوروبي"],
+    },
+    "GNKSAE": {
+        "must": ["تاسي", "السوق السعودي", "أرامكو", "سابك", "الراجحي", "البنك الأهلي", "رؤية 2030",
+                 "صندوق الاستثمارات", "هيئة السوق المالية", "تداول", "ميزانية", "الناتج المحلي",
+                 "التضخم", "الاقتصاد السعودي", "أرقام", "نيوم", "القدية", "الشركات السعودية", "السعودية"],
+        "and": ["اقتصاد", "اقتصادي", "أسهم", "سوق", "نفط", "استثمار", "تمويل", "بنك", "ميزانية",
+                "تضخم", "إيرادات", "أرباح", "ريال", "مؤشر", "شركة", "صادرات", "عقار", "مصرف", "اكتتاب"],
+        "block": ["غزة", "إسرائيل", "مباراة", "الدوري", "أنمي", "فيلم"],
+    },
+    "AIAR": {"must": ["ذكاء اصطناعي", "الذكاء الاصطناعي", "ذكاء", "نموذج", "نماذج", "شات جي بي تي",
+                      "جيميناي", "كلود", "أوبن", "أنثروبيك", "ديب مايند", "روبوت", "وكيل", "وكلاء",
+                      "تعلم آلي", "AI", "GPT", "LLM", "OpenAI", "Anthropic", "Gemini", "Claude", "DeepMind"],
+             "block": ["مباراة", "الدوري", "هدف", "مسلسل", "فيلم", "جريمة", "قضية", "محكمة", "سرقة"]},
+    "AIEN": {"must": ["ai", "artificial intelligence", "openai", "anthropic", "model", "llm", "chatbot",
+                      "machine learning", "gemini", "claude", "agent"]},
+    "GAMES": {"must": ["لعبة", "ألعاب", "game", "PlayStation", "Xbox", "Nintendo", "Steam", "GTA", "DLC",
+                       "كونسول", "بلايستيشن", "إكس بوكس", "نينتندو", "إصدار", "تحديث"],
+              "block": ["مباراة", "الدوري", "أسهم", "نفط", "اقتصاد"]},
+    "GAMESEN": {"must": ["game", "gaming", "playstation", "xbox", "nintendo", "steam", "dlc", "patch",
+                         "console", "review", "demo", "release"]},
+    "BARCAFEED": {"must": ["برشلونة", "بارسا", "barcelona", "لاماسيا", "فليك", "لامين", "ليفاندوفسكي",
+                           "رافينيا", "أنسو", "تير شتيغن", "كوبارسي", "بيدري", "غافي", "دي يونغ",
+                           "كافيناس", "أليماني", "ديكو"],
+                  "block": ["اقتصاد", "أسهم", "نفط", "تضخم", "عملات"]},
+    "FOOTFEED": {"must": ["مباراة", "الدوري", "كأس", "هدف", "هداف", "لاعب", "فريق", "ملعب", "دوري أبطال",
+                          "لاليغا", "الليغا", "ريال مدريد", "برشلونة", "الهلال", "النصر", "الاتحاد",
+                          "الأهلي", "منتخب", "كلاسيكو", "ريموتادا", "دوري روشن"],
+                 "block": ["اقتصاد", "أسهم", "أنمي"]},
+}
+
+_NORM_MAP = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ى": "ي", "ة": "ه"})
+_TASHKEEL = re.compile(r"[\u064B-\u0652]")
+
+
+def _norm(t: str) -> str:
+    return _TASHKEEL.sub("", (t or "").translate(_NORM_MAP)).lower()
+
+
+def key_ok(key: str, it: dict) -> bool:
+    """هل الخبر يخص قسم هذه الخلاصة فعلًا؟ (سعودي · اقتصاد سعودي · ذكاء · ألعاب · برشلونة · دوريات)"""
+    rule = KEY_RULES.get(key)
+    if not rule:
+        return True
+    s = _norm((it.get("t") or "") + " " + (it.get("d") or ""))
+    if any(_norm(w) in s for w in rule.get("block", [])):
+        return False
+    if rule.get("must") and not any(_norm(w) in s for w in rule["must"]):
+        return False
+    if rule.get("and") and not any(_norm(w) in s for w in rule["and"]):
+        return False
+    return True
+
+
+def split_publisher(items: list[dict]) -> list[dict]:
+    """«الخبر - الناشر» → عنوان نقي + اسم الناشر كمصدر."""
+    for it in items:
+        m = re.match(r"^(.{8,}?)\s+[-–—]\s+([^-–—]{2,42})$", it.get("t", ""))
+        if m:
+            it["t"] = m.group(1).strip()
+            if not it.get("s"):
+                it["s"] = m.group(2).strip()
+    return items
+
+
 def merge(old: list[dict], new: list[dict], limit: int, keep_days: int = KEEP_DAYS) -> list[dict]:
     """دمج تراكمي: الجديد أولًا، ثم القديم بلا تكرار (بالرابط)، ولا حذف داخل المدة."""
     cutoff = int((datetime.now(timezone.utc) - timedelta(days=keep_days)).timestamp() * 1000)
@@ -216,14 +293,30 @@ def shape(items: list[dict], with_img: bool) -> list[dict]:
 
 
 def og_image(url: str) -> str:
-    """صورة المشاركة من صفحة الخبر نفسها (og:image) — بديل نظيف حين لا تضع الخلاصة صورة."""
-    raw = fetch(url)
-    txt = raw.decode("utf-8", "replace")[:400000]
-    for pat in (r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)',
-                r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image'):
+    """صورة المشاركة من صفحة الخبر نفسها (og:image / twitter:image).
+
+    صفحات Google News كبيرة (٦٠٠KB+) وتحمل الصورة في وسوم meta؛ لذلك نقرأ مساحة
+    أوسع ونجرّب ترتيبي الوسم، ومنها تُستخرج صورة الخبر الحقيقية.
+    """
+    try:
+        raw = fetch(url)
+    except Exception:
+        return ""
+    txt = raw.decode("utf-8", "replace")[:1200000]
+    pats = (
+        r'<meta[^>]+property=["\']og:image(?::secure_url)?["\'][^>]+content=["\']([^"\']+)',
+        r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image',
+        r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)',
+        r'"image"\s*:\s*"([^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"',
+        r'<img[^>]+src=["\'](https?://[^"\']+\.(?:jpg|jpeg|png|webp)[^"\']*)',
+    )
+    for pat in pats:
         m = re.search(pat, txt, re.I)
         if m and m.group(1).startswith("http"):
-            return unescape(m.group(1))
+            u = unescape(m.group(1))
+            if "googleusercontent" in u or "gstatic" in u:
+                u = re.sub(r"=s\d+.*$", "=s0", u)
+            return u
     return ""
 
 
@@ -582,6 +675,14 @@ def main() -> int:
             items = parse_feed(fetch(url), name)
             if not items:
                 raise ValueError("feed returned no usable items")
+            if key in GN_KEYS:
+                items = split_publisher(items)
+            if key in KEY_RULES:
+                kept = [it for it in items if key_ok(key,it)]
+                print(f"   · {key:9s} فلتر القسم: {len(kept)}/{len(items)}")
+                items = kept
+                if not items:
+                    raise ValueError("no items match this section's keywords")
             return key, items, None
         except Exception as exc:  # noqa: BLE001 - one feed must not stop the rest
             return key, [], f"{type(exc).__name__}: {exc}"
