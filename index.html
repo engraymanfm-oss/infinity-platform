@@ -2598,7 +2598,7 @@ function v9Home(){
               const hh = new Intl.DateTimeFormat('ar-u-nu-latn', {hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'Asia/Riyadh'}).format(ts);
               return '<div class="fxRow"><span class="d">' + dd + '<br>' + hh + '</span><b>' + escHtml(fxName(f[1])) + '</b><span class="x">×</span><b>' + escHtml(fxName(f[2])) + '</b></div>';
             }).join('');
-            const res = (lg.res || []).slice(0, 3).map(r => '<div class="fxRow fxRes"><span class="d">' + escHtml(String(r[0]).slice(5, 10).replace('-', '/')) + '</span><b>' + escHtml(r[1]) + '</b><span class="sc">' + r[2] + '-' + r[3] + '</span><b>' + escHtml(r[4]) + '</b></div>').join('');
+            const res = (lg.res || []).slice(0, 3).map(r => '<div class="fxRow fxRes"><span class="d">' + escHtml(String(r[0]).slice(5, 10).replace('-', '/')) + '</span><b>' + escHtml(fxName(r[1])) + '</b><span class="sc">' + r[2] + '-' + r[3] + '</span><b>' + escHtml(fxName(r[4])) + '</b></div>').join('');
             return '<div class="fxCard"><h3>' + escHtml(lg.n) + '<small>' + escHtml(lg.round || '') + '</small></h3>'
               + (rows || '<div class="fxNote">' + escHtml(lg.note || 'ما فيه مباريات مجدولة الآن.') + '</div>')
               + (res ? '<div class="fxNote" style="margin-top:6px;color:var(--gold)">آخر النتائج</div>' + res : '')
