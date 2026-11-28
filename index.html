@@ -1385,6 +1385,9 @@ body.briefOpen{overflow:hidden}
 @media (max-width:360px){ .palTabs button{padding:3px 7px;font-size:.62rem} }
 
 
+const AR_MAP={'Frieren':'فريرين','Fullmetal':'الخيميائي الفولاذي','Steins':'ستاينز غيت','Gintama':'جينتاما','Shingeki':'هجوم العمالقة','Attack on Titan':'هجوم العمالقة','Hunter':'هنتر × هنتر','One Piece':'ون بيس','Death Note':'مذكرة الموت','Code Geass':'كود غياس','Cowboy':'كاوبوي بيبوب','Monster':'مونستر','Vinland':'ملحمة فينلاند','Mob Psycho':'موب سايكو','Violet':'فيوليت إيفرغاردن','Jujutsu':'جوجوتسو كايسن','Demon Slayer':'قاتل الشياطين','Kimetsu':'قاتل الشياطين','Spy':'عائلة سباي','Oshi no Ko':'طفل النجم','Bleach':'بليتش','Naruto':'ناروتو','Kingdom':'مملكة','Berserk':'بيرسيرك','Clannad':'كلاناد','March':'مارش يأتي كأسد','Ping Pong':'بينغ بونغ','Hyouka':'هيوكا','Great Pretender':'المحتال العظيم','Kaguya':'كاغويا','Odd Taxi':'أود تاكسي','Pluto':'بلوتو','Dororo':'دورورو','Abyss':'صُنع في الهاوية','Bocchi':'بوتشي ذا روك','Angel':'أنجل بيتس','Legend of the Galactic':'ملحمة أبطال المجرة','Haikyu':'هايكيو','Blue Lock':'بلو لوك','Chainsaw':'رجل المنشار','Solo Leveling':'رفع المستوى بمفردي','Kusuriya':'دفتريات الصيدلانية','Fruit':'سلة الفواكه','Nana':'نانا','Horimiya':'هوريميا','Oregairu':'أوريكايرو','Monogatari':'مونوغاتاري','Ranma':'رانما','Yu Yu':'يوشي شويشن'};
+function arTitle(m){ const t=(m.title&&(m.title.romaji||m.title.english||''))||''; for(const k in AR_MAP){ if(t.toLowerCase().includes(k.toLowerCase())) return AR_MAP[k]+' · '+t; } return t; }
+
 /* ===== الأنمي v16: شريط الأنواع القابل للبحث والتمرير + الترتيب ===== */
 .anGenreBar{background:linear-gradient(170deg,rgba(8,59,113,.55),rgba(0,34,75,.8));border:1px solid var(--line);border-radius:16px;padding:11px 12px 4px;margin:12px 0}
 .anGenreHead{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
