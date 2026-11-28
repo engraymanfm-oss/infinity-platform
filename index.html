@@ -1446,9 +1446,9 @@ body.briefOpen{overflow:hidden}
 .perfCard{position:relative;background:linear-gradient(170deg,rgba(8,59,113,.5),rgba(0,34,75,.9));border:1px solid var(--line);border-radius:15px;padding:10px;cursor:pointer;text-align:center;transition:transform .16s ease,border-color .16s ease}
 .perfCard:hover,.perfCard:focus-visible{transform:translateY(-3px);border-color:var(--gold2);outline:none}
 .perfRank{position:absolute;top:7px;inset-inline-start:7px;z-index:2;font-size:.6rem;font-weight:800;color:#050506;background:linear-gradient(135deg,var(--gold),#DED6C2);border-radius:99px;padding:1px 7px}
-.perfPic{height:170px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 35%,rgba(127,178,229,.16),transparent 70%);border-radius:11px;margin-bottom:8px}
+.perfPic{height:170px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#F7F5F0,#E8E3D8);border-radius:11px;margin-bottom:8px;overflow:hidden}
 .perfGrid.top3 .perfPic{height:210px}
-img.perfBottle{max-height:100%;max-width:100%;object-fit:contain;filter:drop-shadow(0 10px 18px rgba(0,0,0,.5))}
+img.perfBottle{max-height:100%;max-width:100%;object-fit:contain;mix-blend-mode:multiply;filter:drop-shadow(0 8px 16px rgba(0,0,0,.35))}
 .perfBody b{display:block;font-size:.78rem;color:var(--txt);line-height:1.5;direction:ltr}
 .perfBody small{display:block;font-size:.62rem;color:var(--dim);margin-top:2px}
 .perfTags{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:6px}
@@ -5131,6 +5131,13 @@ function perfImg(p){
   return '<img class="perfBottle" loading="lazy" decoding="async" alt="" src="assets/perfumes/' + escHtml(p.id) + '.jpg"'
     + ' onerror="this.onerror=null;this.src=\'' + escHtml(p.img) + '\'">';
 }
+function perfGender(g){
+  const t = String(g || '').toLowerCase();
+  if(t.indexOf('women and men') >= 0) return 'للجنسين';
+  if(t.indexOf('men') >= 0) return 'رجالي';
+  if(t.indexOf('women') >= 0) return 'نسائي';
+  return g;
+}
 function perfLogo(p){
   const letter = escHtml((p.brandAr || p.brand || 'ع').charAt(0));
   const fb = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72"><rect width="72" height="72" rx="16" fill="#0B3C7A"/><text x="36" y="47" font-family="serif" font-size="30" fill="#F0E1C4" text-anchor="middle">' + letter + '</text></svg>').replace(/'/g, '%27');
@@ -5195,7 +5202,7 @@ function perfDetailSheet(id){
     + (p.perf ? '<div><b>العطّار</b><span>' + escHtml(p.perf) + '</span></div>' : '<div><b>العطّار</b><span>غير معلن في Fragrantica</span></div>')
     + (p.year ? '<div><b>سنة الإصدار</b><span>' + p.year + '</span></div>' : '')
     + (p.family ? '<div><b>العائلة</b><span>' + escHtml(p.family) + '</span></div>' : '')
-    + (p.gender ? '<div><b>لمن</b><span>' + escHtml(p.gender) + '</span></div>' : '')
+    + (p.gender ? '<div><b>لمن</b><span>' + escHtml(perfGender(p.gender)) + '</span></div>' : '')
     + '</div>'
     + '<h4 class="perfSbH">الهرم العطري</h4>'
     + '<div class="perfAxWrap">' + (p.notes.length ? '<div class="perfAx"><span>المكونات</span><div class="perfAxN">'
