@@ -4440,6 +4440,7 @@ function routeInner(force){
   if(p[0]==='news') return p[1]?renderNews(p[1],force):newsHub();
   if(p[0]==='ai') return aiDash();
   if(p[0]==='perfumes') return viewPerfumes();
+  if(p[0]==='anime') return renderNews('anime');
   if(p[0]==='devices') return p[1]?devicesPage(p[1]):devicesHub();
   if(p[0]==='saved') return viewSaved();
   homeHero();
@@ -5214,7 +5215,10 @@ function viewPerfumes(){
   killCharts();
   document.title = 'العطور — Infinity';
   setStatus('ok', 'Infinity DNA · ' + PERF.length + ' عطرًا · Fragrantica');
-  $('#body').innerHTML = '<div class="perfDna">'
+  $('#view').innerHTML = '<div class="crumb"><a href="#/">الرئيسية</a> / العطور</div>'
+    + '<h1 class="view">' + IC.bottle + 'العطور</h1>'
+    + '<p class="sub">بصمة Infinity DNA · أفضل 3 · مجموعته · Fragrantica Top 10 <span class="status ok" id="st"><span class="dot"></span>Fragrantica · ' + PERF.length + ' عطرًا</span></p>'
+    + '<div class="perfDna">'
     + '<div class="perfDnaPic"><img src="' + escHtml(DNA.img) + '" alt="Infinity DNA" loading="eager"></div>'
     + '<div class="perfDnaBody"><span class="perfKicker">بصمة أبو غيث</span>'
     + '<h2>Infinity DNA</h2>'
@@ -5229,7 +5233,7 @@ function viewPerfumes(){
     + '<section class="bk"><div class="bkHead"><h2>Fragrantica Top 10</h2><span class="more">الأكثر رواجًا على Fragrantica — 28 نوفمبر 2026</span></div>'
     + '<div class="perfGrid">' + PERF_FTOP10.map((id, i) => perfCard(id, i, {rank: i + 1})).join('') + '</div></section>'
     + '<div class="panel"><small>النوتات والعطّارون والتقييمات من صفحات العطر في Fragrantica · الترتيب في Top 10 من قائمة «Most Popular Perfumes» الحية على الموقع · اضغط أي بطاقة يفتح الهرم العطري كامل مع صورة القارورة وبيت العطر.</small></div>';
-  document.querySelectorAll('#body .perfCard').forEach(c => {
+  document.querySelectorAll('#view .perfCard').forEach(c => {
     c.addEventListener('click', () => perfDetailSheet(c.dataset.perf));
     c.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); perfDetailSheet(c.dataset.perf); } });
   });
@@ -5642,7 +5646,7 @@ function kpiBox(ic, num, lbl, mini){
 
 addEventListener('hashchange', ()=>route());
 buildNav(); palBoot(); wireCards(); bpBoot(); briefBoot(); stamp(); route();
-(function(){ const b=document.createElement('div'); b.className='verBadge'; b.textContent='v15 · 28 نوفمبر'; document.body.appendChild(b); })();
+(function(){ const b=document.createElement('div'); b.className='verBadge'; b.textContent='v16 · 28 نوفمبر'; document.body.appendChild(b); })();
 addEventListener('load',()=>{ try{ favSweep(); favBoard(); }catch(e){} });
 
 </script>
