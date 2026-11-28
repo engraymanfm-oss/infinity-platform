@@ -1931,7 +1931,7 @@ const NSECTIONS = [
   {id:'ai',      label:'الذكاء الاصطناعي',  ic:IC.brain, desc:'خلاصات ذكاء اصطناعي متخصصة — عربي وTechCrunch AI'},
   {id:'games',   label:'الألعاب',           ic:IC.game,  desc:'IGN وGameSpot وأخبار ألعاب عربية — بلا خلط'},
   {id:'movies',  label:'الأفلام',           ic:IC.film,  desc:'أفضل 10 لكل تصنيف + شباك التذاكر: في السينما وقريبًا'},
-  {id:'anime',   label:'الأنمي',            ic:IC.anime, desc:'أفضل 10 لكل تصنيف — AniList وأغلفة وإعلانات'},
+  {id:'anime',   label:'الأنمي',            ic:IC.anime, desc:'77 نوعًا · أفضل 30 لكل نوع · أغلفة وروابط من AniList'},
   {id:'selfdev', label:'تطوير الذات',       ic:IC.book,  desc:'أعمدة وخطة أسبوعية وأخبار الإنتاجية'}
 ];
 
@@ -3061,14 +3061,19 @@ function anItemFromAniList(m, ix){
     u: m.siteUrl || '', i: ((m.coverImage || {}).large) || '', rank: ix + 1
   };
 }
-async function anFetchTop(g){
+async function anFetchTop(g, timeoutMs){
   const Q = '{Page(page:1,perPage:30){media(type:ANIME,isAdult:false,sort:SCORE_DESC,'
     + anFilter(g) + '){title{romaji english} averageScore episodes siteUrl coverImage{large} startDate{year}}}}';
-  const r = await fetch('https://graphql.anilist.co', {
-    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({query:Q})
-  }).then(x => x.json());
-  const ms = (r && r.data && r.data.Page) ? r.data.Page.media : [];
-  return ms.map(anItemFromAniList);
+  const ctl = new AbortController();
+  const timer = setTimeout(() => { try{ ctl.abort(); }catch(e){} }, timeoutMs || 9000);
+  try{
+    const r = await fetch('https://graphql.anilist.co', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({query:Q}), signal: ctl.signal
+    }).then(x => x.json());
+    const ms = (r && r.data && r.data.Page) ? r.data.Page.media : [];
+    return ms.map(anItemFromAniList);
+  } finally { clearTimeout(timer); }
 }
 function anCard(x, ix){
   const nm = arTitle({title:{romaji:x.t, english:x.e}}) || x.t;
@@ -3083,6 +3088,15 @@ function anCard(x, ix){
     + '<div class="rateRow"><b>' + (x.sc || '—') + '</b><span class="pbar" style="flex:1"><i style="--w:' + Math.max(2, Math.min(100, x.sc||0)) + '%"></i></span><span>' + (x.ep ? 'حلقات ' + x.ep : (x.y||'')) + '</span></div>'
     + '<div class="meta"><b>AniList</b><span>' + (x.y ? x.y : '—') + '</span></div>'
     + '</article>';
+}
+function anPaint(g, items, src, box){
+  if(!box) return;
+  vReset();
+  const list = items.slice(0, 30).map((x, ix) => Object.assign({}, x, {rank: ix + 1}));
+  const arch = ARCH.merge('anime:' + g[0], list.map(x => ({t: x.t, s: 'AniList', l: x.u || '', img: x.i || '', p: Date.now()})));
+  box.innerHTML = '<h2 class="anHead">أفضل 30 — ' + escHtml(g[0]) + ' <span>' + src + '</span></h2>'
+    + '<div class="cumNote" style="margin-bottom:8px">تراكمي · <b>' + arch.length + '</b> عملًا محفوظًا في هذا النوع · الترتيب بتقييم AniList</div>'
+    + '<div class="news anGrid">' + list.map(anCard).join('') + '</div>';
 }
 async function viewAnime(sec, force){
   setStatus('load', 'يجلب أفضل 30 من AniList…');
@@ -3100,26 +3114,27 @@ async function viewAnime(sec, force){
   const show = async i => {
     const g = ANIME_GENRES[i];
     document.querySelectorAll('#ag button').forEach(b => b.classList.toggle('on', +b.dataset.g === i));
-    $('#alist').innerHTML = '<div class="panel">يجلب أفضل 30 — ' + escHtml(g[0]) + '…</div>';
-    let items = [], src = 'AniList';
-    try{ items = await anFetchTop(g); }catch(e){ items = []; }
-    if(!items.length){
-      const c = await anCacheLoad();
-      const rec = (c.genres || {})[g[0]];
-      if(rec && rec.items && rec.items.length){ items = rec.items; src = 'نسخة محفوظة'; }
-    }
+    $('#alist').innerHTML = '<div class="panel">يفتح «' + escHtml(g[0]) + '»…</div>';
+    let items = [], src = 'نسخة محفوظة';
+    /* 1) المحفوظ فورًا: لا انتظار للشبكة */
+    const c = await anCacheLoad();
+    const rec = (c.genres || {})[g[0]];
+    if(rec && rec.items && rec.items.length) items = rec.items;
+    if(items.length) anPaint(g, items, src, $('#alist'));
+    else $('#alist').innerHTML = '<div class="panel">يجلب أفضل 30 — ' + escHtml(g[0]) + '…</div>';
+    /* 2) الحي من AniList ثم نستبدل */
+    try{
+      const live = await anFetchTop(g);
+      if(live.length){ items = live; src = 'AniList'; }
+    }catch(e){}
     if(!items.length){
       $('#alist').innerHTML = '<div class="panel">ما وصلت قائمة «' + escHtml(g[0]) + '» الآن — جرّب التحديث بعد قليل.</div>';
       setStatus('bad', 'تعذر الوصول'); return;
     }
-    vReset();
-    items = items.slice(0, 30).map((x, ix) => Object.assign({}, x, {rank: ix + 1}));
-    const arch = ARCH.merge('anime:' + g[0], items.map(x => ({t: x.t, s: 'AniList', l: x.u || '', img: x.i || '', p: Date.now()})));
-    $('#alist').innerHTML = '<h2 class="anHead">أفضل 30 — ' + escHtml(g[0]) + ' <span>' + src + '</span></h2>'
-      + '<div class="cumNote" style="margin-bottom:8px">تراكمي · <b>' + arch.length + '</b> عملًا محفوظًا في هذا النوع · الترتيب بتقييم AniList</div>'
-      + '<div class="news anGrid">' + items.map(anCard).join('') + '</div>';
+    anPaint(g, items, src, $('#alist'));
     paintBooks();
     setStatus('ok', 'حية — ' + g[0] + ' · أفضل 30 · ' + src);
+    return;
   };
 
   $('#ag').addEventListener('click', e => {
