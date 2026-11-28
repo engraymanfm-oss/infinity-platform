@@ -281,13 +281,72 @@ def js_json(obj) -> str:
     return s.replace("</", "<\\/").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
 
 
+
+# ---------------------------------------------------------------- زبدة في 3 نقاط
+STOP_TAIL = ("اقرأ المزيد", "التفاصيل بعد قليل", "نُشر المقال", "تابعونا", "المصدر:")
+
+
+def bullets3(title: str, desc: str, source: str = "", when: str = "") -> list[str]:
+    """ثلاث نقاط عربية موجزة من نص الخبر نفسه — جمل كاملة، بلا اختراع معلومة.
+
+    نأخذ الجمل الكاملة أولًا، ثم نصف الجمل عند الحاجة، ثم نُكمل ببطاقة المصدر
+    والوقت. النقطة الأخيرة قد تكون بطاقة تعريفية صريحة لا خبرًا مختلقًا.
+    """
+    text = plain(desc or "")
+    for bad in STOP_TAIL:
+        text = text.replace(bad, " ")
+    text = re.sub(r"\s+", " ", text).strip()
+    out: list[str] = []
+
+    def add(v: str) -> None:
+        v = (v or "").strip(" .،؛-")
+        if len(v) < 16:
+            return
+        key = _norm(v)[:40]
+        if any(key in _norm(o)[:40] or _norm(o)[:40] in key for o in out):
+            return
+        out.append(v if len(v) <= 150 else v[:147].rsplit(" ", 1)[0] + "…")
+
+    for sent in re.split(r"(?<=[.!؟?])\s+", text):
+        if len(out) >= 3:
+            break
+        add(sent)
+    if len(out) < 3:
+        for clause in re.split(r"[،؛]\s+", text):
+            if len(out) >= 3:
+                break
+            add(clause)
+    if len(out) < 3 and title:
+        add(title)
+    if len(out) < 3:
+        nums = re.findall(r"\d[\d,.٪%]*(?:\s?(?:مليار|مليون|ألف|دولار|ريال|يورو|جنيه|%))?", text)
+        nums = [n for n in nums if len(re.sub(r"\D", "", n)) >= 2][:4]
+        if len(nums) >= 2:
+            add("أرقام الخبر: " + " · ".join(nums))
+    # إكمال صريح بلا حلقة مفتوحة: كل إضافة هنا مضمونة ولا تعتمد على شرط add()
+    while len(out) < 3:
+        if not out:
+            out.append((title or "خبر من مصادر المنصة").strip()[:150])
+        elif len(out) == 1:
+            out.append((f"المصدر: {source}" if source else "المصدر: مصادر المنصة")
+                       + (f" · نُشر {when}" if when else ""))
+        else:
+            out.append("التفاصيل الكاملة والصياغة الأصلية عند المصدر بالرابط.")
+    return out[:3]
+
 def shape(items: list[dict], with_img: bool) -> list[dict]:
+    """يوحّد شكل الخبر ويضيف «الزبدة في 3 نقاط» (b) لكل عنصر جديد."""
     out = []
     for it in items:
         row = {"t": it.get("t", ""), "l": it.get("l", ""), "s": it.get("s", ""),
                "d": it.get("d", ""), "p": int(it.get("p") or 0)}
         if with_img:
             row["img"] = it.get("img") or ""
+        if not row.get("b"):
+            when = ""
+            if row["p"]:
+                when = datetime.fromtimestamp(row["p"] / 1000, RIYADH).strftime("%d/%m %H:%M")
+            row["b"] = bullets3(row["t"], row["d"], row["s"], when)
         out.append(row)
     return out
 
@@ -754,6 +813,66 @@ def js_json_pairs(items) -> str:
     return json.dumps(items, ensure_ascii=False, separators=(",", ":"))
 
 
+
+# ---------------------------------------------------------------- مصادر تقرير المستخدم (72 صفحة)
+# المصادر التي لها خلاصة عامة تُجلب عبر Google News مقيّدة بالموقع نفسه، فلا يدخل
+# خبر من موقع لم يُطلبه. المفاتيح هنا تُستخدم كذلك في الصفحة (SEC_FEEDS).
+SOURCE_FEEDS = {
+    "ARSP": ("https://news.google.com/rss/search?hl=ar&gl=SA&ceid=SA:ar&q="
+             "site:kooora.com+OR+site:filgoal.com+OR+site:goal.com+OR+site:beinsports.com"
+             "+OR+site:arabic.sport360.com+OR+site:marca.com+when:3d", "رياضة عربية — مصادر التقرير"),
+    "ARCIN": ("https://news.google.com/rss/search?hl=ar&gl=SA&ceid=SA:ar&q="
+              "site:elcinema.com+OR+site:etbilarabi.com+when:5d", "سينما عربية — مصادر التقرير"),
+    "ARTECH": ("https://news.google.com/rss/search?hl=ar&gl=SA&ceid=SA:ar&q="
+               "site:teqnyatoday.com+OR+site:technologyarabia.com+OR+site:aitnews.com+when:3d",
+               "تقنية عربية — مصادر التقرير"),
+    "ARECON": ("https://news.google.com/rss/search?hl=ar&gl=SA&ceid=SA:ar&q="
+               "site:asharqbusiness.com+OR+site:aleqt.com+OR+site:sa.investing.com+when:3d",
+               "اقتصاد — مصادر التقرير"),
+    "ARCARS": ("https://news.google.com/rss/search?hl=ar&gl=SA&ceid=SA:ar&q="
+               "site:arabgt.com+OR+site:arabsauto.com+OR+site:syarah.com+when:7d",
+               "سيارات — مصادر التقرير"),
+}
+
+# مراجع التحقق والتصنيف (لا تُجلب كأخبار: تُعرض روابط في المنصة)
+SOURCE_LINKS = {
+    "devices": ["https://nanoreview.net", "https://www.antutu.com", "https://daleelmob.com", "https://mobizil.com"],
+    "ai": ["https://daleelai.org", "https://3aqel.com", "https://www.braintrust.dev", "https://langfuse.com",
+           "https://phoenix.arize.com", "https://deepeval.com", "https://ragas.io", "https://www.promptfoo.dev"],
+    "perfumes": ["https://www.parfumo.com", "https://www.sephora.me", "https://avantistor.com", "https://larochelle.sa"],
+    "news": ["https://www.spa.gov.sa", "https://www.alarabiya.net", "https://www.alekhbariya.net",
+             "https://www.aljazeera.net", "https://www.bbc.com/arabic", "https://www.asharq.com",
+             "https://www.reuters.com", "https://www.okaz.com.sa", "https://www.aleqt.com",
+             "https://datasaudi.sa/ar", "https://www.crunchyroll.com/ar"],
+    "cars": ["https://www.arabgt.com", "https://www.arabsauto.com", "https://www.syarah.com"],
+}
+
+
+def merge_source_feeds(feeds: dict, curated: dict, snapshot: dict) -> list[str]:
+    """يضيف خلاصات المصادر الجديدة للتي في الصفحة، ويرجع المفاتيح القابلة للتحديث."""
+    added = []
+    for key, (url, name) in SOURCE_FEEDS.items():
+        if key in curated or key in snapshot:
+            feeds.setdefault(key, (url, name))
+            added.append(key)
+    return added
+
+
+def source_health() -> None:
+    """فحص خفيف لمراجع التحقق — لا يفشل التحديث إن تعذّر أحدها."""
+    ok = 0
+    for kind, urls in SOURCE_LINKS.items():
+        for u in urls[:4]:
+            try:
+                req = urllib.request.Request(u, method="HEAD", headers={"User-Agent": UA})
+                with urllib.request.urlopen(req, timeout=8) as r:
+                    if r.status < 400:
+                        ok += 1
+            except Exception:
+                continue
+    print(f"   · مراجع التحقق: {ok} استجابت الآن", file=sys.stderr)
+
+
 def main() -> int:
     if not INDEX.exists():
         print(f"!! {INDEX} not found", file=sys.stderr)
@@ -780,6 +899,14 @@ def main() -> int:
 
     curated = grab("CURATED")
     snapshot = grab("SNAPSHOT")
+    # v18: مصادر التقرير — خلاصات مقيّدة بمواقع المصادر نفسها
+    extra_keys = merge_source_feeds(feeds, curated, snapshot)
+    if extra_keys:
+        print("   · خلاصات مصادر التقرير: " + " · ".join(extra_keys), file=sys.stderr)
+    try:
+        source_health()
+    except Exception:
+        pass
     before = (json.dumps(curated, ensure_ascii=False, sort_keys=True),
               json.dumps(snapshot, ensure_ascii=False, sort_keys=True))
 

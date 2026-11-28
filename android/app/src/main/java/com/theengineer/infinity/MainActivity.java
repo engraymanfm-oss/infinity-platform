@@ -8,6 +8,8 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
+import java.util.Locale;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
@@ -17,6 +19,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
@@ -30,6 +33,48 @@ import android.widget.ProgressBar;
  * a retry panel when there is no connection.
  */
 public class MainActivity extends Activity {
+
+    /** الجسر الأصلي للنطق: WebView لا يشغّل speechSynthesis، فالنطق من نظام أندرويد نفسه. */
+    public class AndroidTTSBridge {
+        private final TextToSpeech tts;
+
+        AndroidTTSBridge(TextToSpeech engine) {
+            this.tts = engine;
+        }
+
+        @JavascriptInterface
+        public boolean isAvailable() {
+            return tts != null;
+        }
+
+        @JavascriptInterface
+        public void speak(String text, String rate) {
+            if (tts == null || text == null) {
+                return;
+            }
+            float r = 1.0f;
+            try {
+                r = Float.parseFloat(rate);
+            } catch (Exception ignored) {
+                // نبقى على 1.0
+            }
+            if (r < 0.4f) r = 0.4f;
+            if (r > 2.0f) r = 2.0f;
+            tts.setSpeechRate(r);
+            tts.stop();
+            tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "infinity-v18");
+        }
+
+        @JavascriptInterface
+        public void stop() {
+            if (tts != null) {
+                tts.stop();
+            }
+        }
+    }
+
+    private TextToSpeech tts;
+    private volatile boolean ttsReady = false;
 
     private static final String HOME = "https://engraymanfm-oss.github.io/infinity-platform/";
     private static final String SITE_HOST = "engraymanfm-oss.github.io";
@@ -75,9 +120,11 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " InfinityApp/2.1");
+        s.setUserAgentString(s.getUserAgentString() + " InfinityApp/2.2");
 
         CookieManager.getInstance().setAcceptCookie(true);
+        web.addJavascriptInterface(new AndroidTTSBridge(null), "AndroidTTS");
+        initTts();
         web.setBackgroundColor(Color.parseColor("#050506"));
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
@@ -140,6 +187,26 @@ public class MainActivity extends Activity {
 
         retry.setOnClickListener(v -> loadHome());
         loadHome();
+    }
+
+    /** نهيّئ محرك النطق العربي من النظام ثم نربط الجسر الحقيقي بدل الجسر الفارغ. */
+    private void initTts() {
+        tts = new TextToSpeech(this, status -> {
+            if (status == TextToSpeech.SUCCESS && tts != null) {
+                int ar = tts.setLanguage(new Locale("ar", "SA"));
+                if (ar == TextToSpeech.LANG_MISSING_DATA || ar == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    tts.setLanguage(Locale.getDefault());
+                }
+                tts.setPitch(1.0f);
+                ttsReady = true;
+                runOnUiThread(() -> {
+                    if (web != null) {
+                        web.addJavascriptInterface(new AndroidTTSBridge(tts), "AndroidTTS");
+                        web.evaluateJavascript("window.AndroidTTS && window.AndroidTTS.isAvailable()", null);
+                    }
+                });
+            }
+        });
     }
 
     private void loadHome() {
@@ -216,6 +283,15 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (tts != null) {
+            try {
+                tts.stop();
+                tts.shutdown();
+            } catch (Exception ignored) {
+                // لا شيء
+            }
+            tts = null;
+        }
         if (web != null) {
             web.destroy();
         }

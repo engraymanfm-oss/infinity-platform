@@ -64,7 +64,17 @@ GENRES = [
     ("سيرة ذاتية", "Biography", ["Biography"], 15000, 25000, "g"),
     ("وثائقي", "Documentary", ["Documentary"], 8000, 12000, "g"),
     ("موسيقي", "Musical & Music", ["Music", "Musical"], 8000, 12000, "g"),
+    # --- v18: خمسة أنواع جديدة (20 نوعًا × 30 فيلمًا) ---
+    ("إثارة نفسية", "Psychological Thriller", ["Thriller", "Mystery"], 25000, 45000, "both"),
+    ("رياضي", "Sports", ["Sport"], 8000, 15000, "g"),
+    ("بوليسي ونوار", "Film Noir & Police", ["Film-Noir"], 5000, 8000, "g"),
+    ("سينما آسيوية", "Asian Cinema", ["Drama"], 25000, 60000, "asia"),
+    ("أفلام قصيرة", "Short Films", ["Animation", "Drama", "Comedy"], 3000, 6000, "short"),
 ]
+
+# نطاقات آسيا السينمائية لفلتر «سينما آسيوية»
+ASIA_REGIONS = {"JP", "KR", "CN", "HK", "TW", "IN", "TH", "VN", "ID", "PH", "SG", "MY"}
+SHORTS = {}
 
 HERO_QID = "Q1535153"      # superhero film
 BAYES_C = 6.9              # متوسط تقييم IMDb التقريبي لكل الأفلام
@@ -158,7 +168,16 @@ def load_imdb():
     movies = {}
     with gzip.open(basics, "rt", encoding="utf-8", newline="") as f:
         for row in csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE):
-            if row["titleType"] != "movie" or row["isAdult"] == "1":
+            if row["isAdult"] == "1":
+                continue
+            if row["titleType"] == "short":
+                info = rat.get(row["tconst"])
+                if info and info[1] >= 3000 and row["startYear"] not in ("\\N", ""):
+                    SHORTS[row["tconst"]] = {"t": row["primaryTitle"], "y": int(row["startYear"]),
+                                             "g": [g for g in row["genres"].split(",") if g and g != "\\N"],
+                                             "r": info[0], "v": info[1]}
+                continue
+            if row["titleType"] != "movie":
                 continue
             tt = row["tconst"]
             info = rat.get(tt)
@@ -296,6 +315,37 @@ def rt_page_score(slug, english, year):
     return {"rt": pct, "aud": aud, "u": url}
 
 
+ASIA_COUNTRIES = {
+    "Q17": "اليابان", "Q884": "كوريا الجنوبية", "Q148": "الصين", "Q8646": "هونغ كونغ",
+    "Q865": "تايوان", "Q668": "الهند", "Q869": "تايلاند", "Q881": "فيتنام",
+    "Q252": "إندونيسيا", "Q928": "الفلبين", "Q833": "ماليزيا", "Q334": "سنغافورة",
+}
+
+
+def asian_ids(movies):
+    """أفلام آسيوية المنشأ: بلد الإنتاج (P495) من Wikidata لأقوى 700 مرشح بالترتيب المرجّح."""
+    ranked = []
+    for tt, x in movies.items():
+        if x["v"] < 20000:
+            continue
+        wr = (x["v"] / (x["v"] + 40000)) * x["r"] + (40000 / (x["v"] + 40000)) * BAYES_C
+        ranked.append((wr, tt))
+    ranked.sort(reverse=True)
+    cand = [tt for _, tt in ranked[:700]]
+    hits = set()
+    for i in range(0, len(cand), 100):
+        chunk = cand[i:i + 100]
+        vals = " ".join('"%s"' % t for t in chunk)
+        q = ("SELECT ?imdb ?country WHERE { VALUES ?imdb { %s } "
+             "?item wdt:P345 ?imdb ; wdt:P495 ?country . }" % vals)
+        for b in sparql(q):
+            if b.get("country", {}).get("value", "").rsplit("/", 1)[-1] in ASIA_COUNTRIES:
+                hits.add(b["imdb"]["value"])
+        log("  · سينما آسيوية: فُحص", min(i + 100, len(cand)), "من", len(cand))
+        time.sleep(1)
+    return hits
+
+
 def norm(s):
     s = unicodedata.normalize("NFKD", s or "")
     s = "".join(c for c in s if not unicodedata.combining(c))
@@ -389,7 +439,11 @@ def main():
     arch = data.get("arch") or {}
 
     movies = load_imdb()
-    log("  · أفلام:", len(movies))
+    log("  · أفلام:", len(movies), "· أفلام قصيرة:", len(SHORTS))
+    asia_ids = set()
+    if any(g[5] == "asia" for g in GENRES):
+        asia_ids = asian_ids(movies)
+        log("  · سينما آسيوية على IMDb:", len(asia_ids))
     heroes = hero_ids()
     log("  · سوبر هيرو على Wikidata:", len(heroes))
 
@@ -397,11 +451,18 @@ def main():
     chosen = {}
     for ar, en, gs, minv, m, kind in GENRES:
         pool = []
-        for tt, x in movies.items():
+        src_pool = SHORTS if kind == "short" else movies
+        for tt, x in src_pool.items():
             if x["v"] < minv:
                 continue
             if kind == "hero":
                 if tt not in heroes:
+                    continue
+            elif kind == "both":
+                if not set(gs).issubset(set(x["g"])):
+                    continue
+            elif kind == "asia":
+                if tt not in asia_ids:
                     continue
             elif not (set(gs) & set(x["g"])):
                 continue
@@ -421,7 +482,7 @@ def main():
                 arts.append(rec[key])
     meta = wiki_posters(arts, meta)
 
-    films = {tt: movies[tt] for tt in ids}
+    films = {tt: (SHORTS.get(tt) or movies[tt]) for tt in ids}
     rtc = rt_scores(films, load_json(RT_CACHE, {}))
 
     updated = datetime.now().strftime("%Y-%m-%d")
@@ -429,7 +490,7 @@ def main():
     for ar, en, gs, minv, m, kind in GENRES:
         items = []
         for tt in chosen[ar]:
-            x = movies[tt]
+            x = SHORTS.get(tt) or movies[tt]
             rec = meta.get(tt) or {}
             poster = ""
             for key in ("enw", "arw"):
