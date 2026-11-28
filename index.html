@@ -2693,13 +2693,17 @@ function v9Home(){
       const items = list.filter(x => f === 'all' || x.kind === f).slice(0, 12);
       row.innerHTML = items.map(x => {
         const parts = String(x.date || '').trim().split(/\s+/);
-        return `<a class="tlNode" href="${escHtml(x.url || (x.kind === 'فيلم' ? '#/news/movies' : '#/news/anime'))}" ${x.url ? 'target="_blank" rel="noopener noreferrer"' : ''}>
+        const isAn = x.kind === 'أنمي';
+        const k = vReg({t:x.t, d:x.date || '', s:x.kind || '', l:x.url || '', img:x.img || '', p:Date.now(), sec: isAn ? 'anime' : 'movies'},
+          isAn ? {an:{t:x.t, e:'', y:(x.ts ? new Date(x.ts).getFullYear() : null), ep:0, sc:null, f:'TV', g:'قادم', rank:null, u:x.url || '', i:x.img || ''}}
+               : {mv:{t:x.t, a:'', y:(x.ts ? new Date(x.ts).getFullYear() : null), r:null, v:null, rt:null, rtu:'', u:x.url || '', i:x.img || '', g:'قادم', dir:'', note:(x.date ? 'موعد العرض: ' + x.date + '.' : 'موعد العرض لم يُعلن.')}});
+        return `<div class="tlNode" data-k="${k}" role="button" tabindex="0" aria-label="${escHtml(x.t)}">
           <span class="tlDt">${escHtml(parts.slice(0, 2).join(' ') || 'قريبًا')}<small>${escHtml(parts.slice(2).join(' ') || '')}</small></span>
           <i class="dot"></i>
           <img class="tlPoster" loading="lazy" alt="" src="${escHtml(x.img || fbImg(x.t, x.kind))}" onerror="this.onerror=null;this.src='${fbImg(x.t, x.kind)}'">
           <span class="tlK">${escHtml(x.kind)}</span>
           <b class="tlNm">${escHtml(x.t)}</b>
-        </a>`;
+        </div>`;
       }).join('') || '<div class="tlNode"><span class="tlDt">ما فيه عناصر في هذا التصنيف</span></div>';
     };
     const movies = soonMovies();
@@ -5313,7 +5317,7 @@ function wireCards(){
       return;
     }
     if(e.target.closest('a')) return;
-    const sb = e.target.closest('.sbtn[data-k], .v8card[data-k]');
+    const sb = e.target.closest('.sbtn[data-k], .v8card[data-k], .tlNode[data-k], .catCard[data-k], .mvCard[data-k]');
     if(sb){ e.preventDefault(); openSheet(+sb.dataset.k); }
   });
 }
@@ -5469,7 +5473,11 @@ async function soonAnime(){
   }catch(e){ return []; }
 }
 function tlCard(x){
-  return '<article class="tlCard">'
+  const isAn = /أنمي/.test(String(x.kind || ''));
+  const k = vReg({t:x.t, d:x.sub || '', s:x.kind || '', l:x.url || '', img:x.img || '', p:Date.now(), sec: isAn ? 'anime' : 'movies'},
+    isAn ? {an:{t:x.t, e:'', y:(x.ts ? new Date(x.ts).getFullYear() : null), ep:0, sc:null, f:'TV', g:'قادم', rank:null, u:x.url || '', i:x.img || ''}}
+         : {mv:{t:x.t, a:'', y:(x.ts ? new Date(x.ts).getFullYear() : null), r:null, v:null, rt:null, rtu:'', u:x.url || '', i:x.img || '', g:'قادم', dir:'', note:(x.date ? 'موعد العرض: ' + x.date + '.' : 'موعد العرض لم يُعلن.')}});
+  return '<article class="tlCard" data-k="' + k + '" style="cursor:pointer">'
     + '<span class="tlDate">' + escHtml(x.date || 'قريبًا') + '</span>'
     + '<img class="tlImg" loading="lazy" alt="" src="' + escHtml(x.img || fbImg(x.t, x.kind)) + '" onerror="this.onerror=null;this.src=\'' + fbImg(x.t, x.kind) + '\'">'
     + '<span class="tlTag">' + escHtml(x.kind) + '</span>'
