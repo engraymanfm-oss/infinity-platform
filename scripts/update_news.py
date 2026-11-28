@@ -8,8 +8,8 @@ Runs server-side (GitHub Actions): fetches the same RSS feeds the page declares 
     const CURATED={...}         (curated, description-rich items used first)
     const SNAPSHOT={...}        (deeper per-feed snapshot used as offline fallback)
 
-Everything else in index.html is left byte-identical: sections, layout, the +18
-anime category, hand-curated keys with no feed (barca, selfdev), and all logic.
+Everything else in index.html is left byte-identical: sections, layout, hand-curated
+keys with no feed (barca, selfdev), and all logic.
 No CORS proxies are used; the page then needs no network to show news.
 
 Exit codes: 0 ok, 1 hard failure (index.html unreadable or every feed failed).
@@ -634,6 +634,93 @@ def merge_catalog(html: str) -> tuple[str, int]:
     return html[:m.start()] + line + html[m.end():], len(recent) + len(up)
 
 
+def refresh_anime_genres() -> int:
+    """يحدّث data/anime-top30.json (أفضل 30 لكل نوع) من AniList وJikan.
+
+    يعمل داخل الأكشن اليومي: كل نوع يُجلب من جديد، والملف يُكتب تراكميًا.
+    فشل النوع الواحد لا يوقف البقية.
+    """
+    try:
+        import build_anime_genres as B
+    except Exception as exc:  # noqa: BLE001
+        print(f"   !! مولّد الأنمي غير متاح: {exc}", file=sys.stderr)
+        return 0
+    out = ROOT / "data" / "anime-top30.json"
+    data = {}
+    if out.exists():
+        try:
+            data = json.loads(out.read_text(encoding="utf-8"))
+        except Exception:
+            data = {}
+    data.setdefault("genres", {})
+    done = 0
+    for g in B.GENRES:
+        try:
+            key, rec = B.build_one(g)
+        except Exception:
+            continue
+        if rec.get("items"):
+            data["genres"][key] = rec
+            done += 1
+        time.sleep(2)
+    if done:
+        data["updated"] = datetime.now(RIYADH).date().isoformat()
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    return done
+
+
+FRAG_READER = "https://r.jina.ai/https://www.fragrantica.com"
+
+
+def fragrantica_top(limit: int = 10) -> list[dict]:
+    """قائمة Fragrantica الحية «Most Popular Perfumes» مع رابط كل عطر.
+
+    تُقرأ من تذييل أي صفحة عطر عبر قارئ نصي، لأن الموقع يحجب الطلبات المباشرة.
+    """
+    try:
+        import urllib.request
+        req = urllib.request.Request(FRAG_READER + "/perfume/Tom-Ford/Ombre-Leather-2018-50239.html",
+                                     headers={"User-Agent": "Mozilla/5.0"})
+        txt = urllib.request.urlopen(req, timeout=90).read().decode("utf-8", "ignore")
+    except Exception as exc:  # noqa: BLE001
+        print(f"   !! Fragrantica غير متاح: {type(exc).__name__}", file=sys.stderr)
+        return []
+    tail = txt.split("Most Popular Perfumes")[-1][:6000]
+    out, seen = [], set()
+    for name, url in re.findall(r"\[([^\]]{3,60})\]\((https://www\.fragrantica\.com/perfume/[^)]+)\)", tail):
+        name = name.strip()
+        if name in seen:
+            continue
+        seen.add(name)
+        out.append({"name": name, "url": url})
+        if len(out) >= limit:
+            break
+    return out
+
+
+def refresh_perfumes(html: str) -> tuple[str, int]:
+    """يحدّث ترتيب Fragrantica Top 10 داخل قسم العطور، بلا حذف أي عطر من المجموعة."""
+    top = fragrantica_top(10)
+    if len(top) < 5:
+        return html, 0
+    ids = []
+    for t in top:
+        m = re.search(r"/([A-Za-z0-9\-]+?)-(\d+)\.html$", t["url"])
+        if m:
+            ids.append(m.group(2))
+    if len(ids) < 5:
+        return html, 0
+    m = re.search(r"const PERF_TOP10=\[([^\]]*)\];", html)
+    if not m:
+        return html, 0
+    old = re.findall(r"'([^']+)'", m.group(1))
+    # أبقِ المعرّفات المعروفة أولًا بحسب ترتيب Fragrantica، ثم بقية القائمة القديمة
+    ordered = [x for x in old if x in ids] + [x for x in old if x not in ids]
+    line = "const PERF_TOP10=[" + ",".join("'%s'" % x for x in ordered) + "];"
+    return html[:m.start()] + line + html[m.end():], len(top)
+
+
 def js_json_pairs(items) -> str:
     return json.dumps(items, ensure_ascii=False, separators=(",", ":"))
 
@@ -747,7 +834,18 @@ def main() -> int:
         html, cat_n = merge_catalog(html)
         if cat_n:
             print(f"movie catalog merged · {cat_n} titles", file=sys.stderr)
+        # عطور: ترتيب Fragrantica الحالي (يبقى كما هو إن تعذّر الوصول)
+        html, top_n = refresh_perfumes(html)
+        if top_n:
+            print(f"fragrantica top · {top_n}", file=sys.stderr)
         INDEX.write_text(html, encoding="utf-8")
+        # أنمي: أفضل 30 لكل نوع (AniList + Jikan) إلى data/anime-top30.json
+        try:
+            genres_n = refresh_anime_genres()
+            if genres_n:
+                print(f"anime genres refreshed · {genres_n}", file=sys.stderr)
+        except Exception as exc:  # noqa: BLE001
+            print(f"   !! الأنمي تعذّر: {type(exc).__name__}", file=sys.stderr)
 
     total = sum(len(v) for v in results.values())
     print(f"{'updated' if changed else 'no content change'} · {len(results)}/{len(keys)} feeds · "

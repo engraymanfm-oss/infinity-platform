@@ -6,6 +6,9 @@ Infinity — كتالوج الأفلام: آخر شهرين + القادم (دي
 (العنوان العربي من langlinks، التصنيفات للأنواع، وصورة البوستر من صندوق المعلومات).
 
 يكتب scripts/catalog.json — والحقن في index.html يتم بسكربت منفصل.
+
+كتالوج الأنمي (أفضل 30 لكل نوع) يُبنى بسكربت مستقل: `build_anime_genres.py`
+ويكتب `data/anime-top30.json`. التشغيل هنا: `python3 build_catalog.py --anime`.
 """
 import json
 import re
@@ -204,4 +207,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if "--anime" in sys.argv:
+        import build_anime_genres
+        build_anime_genres.main()
+    else:
+        main()
