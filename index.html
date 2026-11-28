@@ -3112,6 +3112,10 @@ async function viewAnime(sec, force){
   anCatalog();
 
   const show = async i => {
+    try{ await anShow(i); }
+    catch(err){ const el = document.querySelector('#alist'); if(el) el.innerHTML = '<div class="panel">تعذّر عرض النوع: ' + escHtml(String((err && err.message) || err)) + '</div>'; }
+  };
+  const anShow = async i => {
     const g = ANIME_GENRES[i];
     document.querySelectorAll('#ag button').forEach(b => b.classList.toggle('on', +b.dataset.g === i));
     $('#alist').innerHTML = '<div class="panel">يفتح «' + escHtml(g[0]) + '»…</div>';
