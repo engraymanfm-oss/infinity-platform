@@ -1508,7 +1508,9 @@ img.perfLogo{width:26px;height:26px;border-radius:7px;background:#050506;padding
 .fxRow .d{color:var(--mut);font-size:.64rem;direction:ltr;text-align:right}
 .fxRow b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;font-size:.7rem}
 .fxRow .x{color:var(--dim);font-size:.66rem}
-.fxRow .sc{background:#F0E1C4;color:#050506;border-radius:6px;padding:1px 6px;font-weight:800;font-size:.68rem;direction:ltr}
+.fxRow .sc{background:#F0E1C4;color:#050506;border-radius:6px;padding:1px 6px;font-weight:800;font-size:.68rem;direction:ltr;white-space:nowrap}
+.fxRow.fxRes{grid-template-columns:38px minmax(0,1fr) 34px minmax(0,1fr)}
+.fxRow.fxRes .sc{text-align:center}
 .fxGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
 .fxNote{color:var(--mut);font-size:.66rem;margin-top:6px}
 .mvModal .rt,.anModal .rt{display:inline-flex;gap:6px;align-items:center}
@@ -2414,6 +2416,18 @@ const HOME4_SPEC = [
   {id:'tech',    label:'تقنية',            feeds:['AIT','VERGE','NINE5','ANDR'], sec:'tech'},
   {id:'ai',      label:'ذكاء اصطناعي',     feeds:['AIAR','AIEN','AIT'], sec:'ai'}
 ];
+function fxName(n){
+  return String(n || '')
+    .replace(/ and Hove Albion/,'')
+    .replace(/^Manchester /,'Man ')
+    .replace(/ United$/,' Utd')
+    .replace(/^Nottingham Forest$/,"Nott'm Forest")
+    .replace(/^Deportivo de A Coruña$/,'Deportivo')
+    .replace(/^Racing de Santander$/,'Racing')
+    .replace(/^Brighton$/,'Brighton')
+    .replace(/^Deportivo Alavés$/,'Alavés')
+    .replace(/^Atlético Madrid$/,'Atlético');
+}
 function homeTop4(){
   const out = [];
   HOME4_SPEC.forEach(sp => {
@@ -2582,9 +2596,9 @@ function v9Home(){
               const ts = new Date(f[0]);
               const dd = new Intl.DateTimeFormat('ar-u-nu-latn', {day:'numeric', month:'short', timeZone:'Asia/Riyadh'}).format(ts);
               const hh = new Intl.DateTimeFormat('ar-u-nu-latn', {hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'Asia/Riyadh'}).format(ts);
-              return '<div class="fxRow"><span class="d">' + dd + '<br>' + hh + '</span><b>' + escHtml(f[1]) + '</b><span class="x">×</span><b>' + escHtml(f[2]) + '</b></div>';
+              return '<div class="fxRow"><span class="d">' + dd + '<br>' + hh + '</span><b>' + escHtml(fxName(f[1])) + '</b><span class="x">×</span><b>' + escHtml(fxName(f[2])) + '</b></div>';
             }).join('');
-            const res = (lg.res || []).slice(0, 3).map(r => '<div class="fxRow"><span class="d">' + escHtml(String(r[0]).slice(5, 10).replace('-', '/')) + '</span><b>' + escHtml(r[1]) + '</b><span class="sc">' + r[2] + '-' + r[3] + '</span><b>' + escHtml(r[4]) + '</b></div>').join('');
+            const res = (lg.res || []).slice(0, 3).map(r => '<div class="fxRow fxRes"><span class="d">' + escHtml(String(r[0]).slice(5, 10).replace('-', '/')) + '</span><b>' + escHtml(r[1]) + '</b><span class="sc">' + r[2] + '-' + r[3] + '</span><b>' + escHtml(r[4]) + '</b></div>').join('');
             return '<div class="fxCard"><h3>' + escHtml(lg.n) + '<small>' + escHtml(lg.round || '') + '</small></h3>'
               + (rows || '<div class="fxNote">' + escHtml(lg.note || 'ما فيه مباريات مجدولة الآن.') + '</div>')
               + (res ? '<div class="fxNote" style="margin-top:6px;color:var(--gold)">آخر النتائج</div>' + res : '')
