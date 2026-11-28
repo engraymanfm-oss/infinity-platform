@@ -681,6 +681,8 @@ def refresh_movies_top30() -> int:
     except Exception as exc:  # noqa: BLE001
         print(f"   !! مولّد الأفلام غير متاح: {exc}", file=sys.stderr)
         return 0
+    saved_argv = sys.argv
+    sys.argv = ["build_movies_top30.py"]
     try:
         B.main()
     except SystemExit:
@@ -688,6 +690,8 @@ def refresh_movies_top30() -> int:
     except Exception as exc:  # noqa: BLE001
         print(f"   !! الأفلام تعذّر: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 0
+    finally:
+        sys.argv = saved_argv
     try:
         data = json.loads((ROOT / "data" / "movies-top30.json").read_text(encoding="utf-8"))
     except Exception:

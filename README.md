@@ -13,7 +13,7 @@
 | `assets/` | الشعارات الرسمية مقصوصة من ورقة الهوية: `logo-circle-dark` (الدائري النيون)، `logo-circle-light`، و`logo-vertical` — PNG + WebP. |
 | `scripts/update_news.py` | يجلب خلاصات RSS من الخادم (بلا وسطاء CORS)، يكمل الصور الناقصة من `og:image`، ويكتب `CURATED` و`SNAPSHOT` و`CURATED_AT` داخل `index.html`. |
 | `.github/workflows/update-news.yml` | يشغّل السكربت كل 4 ساعات وعند الطلب، ثم يرفع التغيير ويعيد بناء الصفحة. |
-| `data/` | `anime-top30.json`: أفضل 30 أنمي لكل نوع (77 نوعًا) من AniList، ونسخة MyAnimeList تُدمج عند توفر Jikan — يبنيها `scripts/build_anime_genres.py`. |
+| `data/` | `anime-top30.json`: أفضل 30 أنمي لكل نوع (77 نوعًا) من AniList، ونسخة MyAnimeList تُدمج عند توفر Jikan — يبنيها `scripts/build_anime_genres.py`. و`movies-top30.json`: أفضل 30 فيلمًا في 15 نوعًا (منها سوبر هيرو) بتقييم IMDb ونسبة Rotten Tomatoes وبوسترات ويكيبيديا — يبنيها `scripts/build_movies_top30.py`. |
 | `assets/perfumes/` | صور قوارير العطور المستخدمة في قسم العطور (من Fragrantica). |
 | `android/` | تطبيق أندرويد خفيف (WebView) باسم Infinity v2.1 يفتح الموقع الحي. |
 | `.github/workflows/build-apk.yml` | يبني الـAPK وينشره في Release باسم `v1.0` (ملف `Infinity.apk`). |
@@ -54,3 +54,5 @@ gh workflow run build-apk.yml --repo engraymanfm-oss/infinity-platform
 - **العطور:** قسم جديد `#/perfumes` فيه بصمة **Infinity DNA** بالصورة والنسب، وهرم عطري تفاعلي ثلاثي الطبقات، وأفضل 3، والمجموعة، وقائمة Fragrantica Top 10، وبطاقة تفاصيل لكل عطر (قارورة، بيت العطر، العطّار، السنة، التقييم، النوتات، مواسم الاستخدام).
 - **إيجاز 30 ثانية:** اتجاه السهمين صار مطابقًا للقراءة من اليمين (الأيسر = التالي، الأيمن = السابق) في الأزرار والكيبورد والسحب، والراوي صار «مساعد ∞».
 - **حرب الذكاء:** 114 شركة ومنصة (أُضيفت 73 شركة من مراجعة PDF الـ67 صفحة) و496 مواجهة على 16 محورًا، ومعايرة جيميناي موضوعيًا (لم يعد الأول ولا الأول في البحث).
+
+- **الأفلام:** 15 نوعًا بينها **سوبر هيرو**، لكل نوع أفضل 30 فيلمًا بترتيب IMDb المرجّح بعدد الأصوات، مع الاسم العربي والإنجليزي والسنة وبوستر حقيقي ونسبة Rotten Tomatoes ورابطي IMDb والإعلان، وشريط أنواع قابل للبحث والتمرير. النسخة المحفوظة في `data/movies-top30.json` يبنيها `scripts/build_movies_top30.py` من IMDb Datasets وRotten Tomatoes وWikidata، ويشغّلها التحديث اليومي بجانب الأنمي.
