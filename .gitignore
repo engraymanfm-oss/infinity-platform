@@ -5,3 +5,6 @@ android/build/
 android/app/build/
 android/local.properties
 .idea/
+
+# IMDb datasets cache (يُعاد تنزيله تلقائيًا) — لا يُرفع
+data/.cache/

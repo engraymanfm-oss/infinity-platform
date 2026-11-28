@@ -17,6 +17,19 @@ ROOT = os.path.dirname(HERE)
 HTML = os.path.join(ROOT, "index.html")
 
 COMPANY_BY_NAME = {c["name"]: c for c in COMPANIES}
+
+# حرس: الصفحة الحية تحمل 115 شركة، وهذا الملف يحمل 36 فقط.
+# تشغيله على الصفحة الحية يمحو الخمسة والسبعين الأخرى، فنمنعه.
+try:
+    _live = re.search(r"const AI_COMPANIES=\{(.*?)\};\n", open(HTML, encoding="utf-8").read(), re.S)
+    _live_n = len(re.findall(r'"parent":', _live.group(1))) if _live else 0
+    if _live_n and _live_n > len(COMPANIES):
+        print("!! الصفحة الحية تحمل %d شركة، وهذا المكوّن %d. لن يُكتب شيء." % (_live_n, len(COMPANIES)))
+        sys.exit(2)
+except SystemExit:
+    raise
+except Exception:
+    pass
 ALL_NAMES = [c["name"] for c in COMPANIES]
 
 # ---------- تحقّق ----------

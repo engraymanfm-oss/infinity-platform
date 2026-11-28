@@ -670,6 +670,31 @@ def refresh_anime_genres() -> int:
     return done
 
 
+def refresh_movies_top30() -> int:
+    """يحدّث data/movies-top30.json (أفضل 30 لكل نوع) من IMDb وRotten Tomatoes.
+
+    يعمل داخل الأكشن اليومي بجانب الأنمي: كل أنواع الأفلام تُحسب من جديد،
+    وكاش IMDb لا يُنزّل مرتين في اليوم. فشل نوع واحد لا يمسّ البقية.
+    """
+    try:
+        import build_movies_top30 as B
+    except Exception as exc:  # noqa: BLE001
+        print(f"   !! مولّد الأفلام غير متاح: {exc}", file=sys.stderr)
+        return 0
+    try:
+        B.main()
+    except SystemExit:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        print(f"   !! الأفلام تعذّر: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 0
+    try:
+        data = json.loads((ROOT / "data" / "movies-top30.json").read_text(encoding="utf-8"))
+    except Exception:
+        return 0
+    return len([g for g in (data.get("genres") or {}).values() if g.get("items")])
+
+
 FRAG_READER = "https://r.jina.ai/https://www.fragrantica.com"
 
 
@@ -846,6 +871,13 @@ def main() -> int:
                 print(f"anime genres refreshed · {genres_n}", file=sys.stderr)
         except Exception as exc:  # noqa: BLE001
             print(f"   !! الأنمي تعذّر: {type(exc).__name__}", file=sys.stderr)
+        # أفلام: أفضل 30 لكل تصنيف (IMDb + Rotten Tomatoes) إلى data/movies-top30.json
+        try:
+            mv_n = refresh_movies_top30()
+            if mv_n:
+                print(f"movie genres refreshed · {mv_n}", file=sys.stderr)
+        except Exception as exc:  # noqa: BLE001
+            print(f"   !! الأفلام تعذّرت: {type(exc).__name__}", file=sys.stderr)
 
     total = sum(len(v) for v in results.values())
     print(f"{'updated' if changed else 'no content change'} · {len(results)}/{len(keys)} feeds · "
