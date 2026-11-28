@@ -74,6 +74,20 @@ IMDB_CACHE_HOURS = 20
 RT_CACHE_DAYS = 7
 META_CACHE_DAYS = 14
 
+# عنوان عربي راسخ لفيلم ترجمته الآلية على ويكيبديا ركيكة أو مضللة
+AR_TITLE = {
+    "The Exorcist": "طارد الأرواح",
+    "Saw": "ساو 1",
+    "V for Vendetta": "V للثأر",
+    "Full Metal Jacket": "قبعة معدنية كاملة",
+    "The Prestige": "البريستيج",
+    "Baraka": "باراكا",
+    "Heat": "المواجهة",
+    "The Intouchables": "الأصدقاء المقربون",
+    "Dancer in the Dark": "راقصة في الظلام",
+    "The Thing": "الشيء",
+}
+
 
 def log(*a):
     print(*a, flush=True)
@@ -430,7 +444,7 @@ def main():
                           + urllib.parse.quote(name.replace(" ", "_")) + "?width=400")
             rt = (rtc.get(tt) or {})
             items.append({
-                "t": x["t"], "a": rec.get("a") or "", "y": x["y"],
+                "t": x["t"], "a": AR_TITLE.get(x["t"]) or rec.get("a") or "", "y": x["y"],
                 "r": round(x["r"], 1), "v": x["v"],
                 "rt": rt.get("rt"), "rtu": rt.get("u", ""),
                 "u": "https://www.imdb.com/title/%s/" % tt,
